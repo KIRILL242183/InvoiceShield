@@ -1,0 +1,28 @@
+# Demo stack. Web is reachable ONLY from localhost, not external interfaces.
+services:
+  web:
+    build: .
+    environment:
+      DATABASE_URL: postgresql+psycopg://invoiceshield:${POSTGRES_PASSWORD:?Copy .env.example to .env}@db:5432/invoiceshield
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: invoiceshield
+      POSTGRES_USER: invoiceshield
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Copy .env.example to .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U invoiceshield -d invoiceshield"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+volumes:
+  postgres_data:
