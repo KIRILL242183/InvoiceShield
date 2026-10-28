@@ -6,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.database import Base, engine
 from app import models  # noqa: F401  (register metadata before create_all)
+from app.routes_pdf import router as pdf_router
 from app.routes_api import router as api_router
 from app.routes_incidents import router as incident_api_router
 from app.routes_investigations_web import router as investigation_web_router
@@ -22,7 +23,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="InvoiceShield",
-    version="0.3.0",
+    version="0.4.0",
     description="Демонстрационный сервис проверки рисков счетов поставщиков.",
     lifespan=lifespan,
 )
@@ -31,6 +32,7 @@ app.include_router(api_router)
 app.include_router(incident_api_router)
 app.include_router(auth_router)
 app.include_router(web_router)
+app.include_router(pdf_router)
 app.include_router(investigation_web_router)
 
 
@@ -53,4 +55,4 @@ async def basic_security_headers(request, call_next):
 
 @app.get("/health", tags=["System"])
 def health():
-    return {"status": "ok", "version": "0.3.0"}
+    return {"status": "ok", "version": "0.4.0"}
