@@ -1,119 +1,123 @@
-# InvoiceShield 🛡️
+# InvoiceShield v0.2.0 🛡️
 
-**InvoiceShield** — учебный B2B FinTech/Cybersecurity проект, который обнаруживает риски оплаты подозрительных счетов поставщиков. Написан на Python + FastAPI, с PostgreSQL/SQLite, веб-панелью, объяснимыми правилами и автоматическими тестами.
+Учебный B2B FinTech / Cybersecurity проект на Python + FastAPI: выявляет риски оплаты счетов поставщиков, объясняет сработавшие правила, сохраняет историю проверок и защищает доступ к данным.
 
-> ⚠️ **DEMO ONLY.** Нет логина, CSRF, TLS и полного набора security controls. Запускать только на `127.0.0.1` со **синтетическими данными**. Никаких реальных счетов, банковских реквизитов или платёжных операций. Баллы — эвристика, не вероятность мошенничества.
+> **ЛОКАЛЬНОЕ ДЕМО, НЕ PRODUCTION.** Только синтетические счета и поставщики, не обрабатывать реальные банковские реквизиты. Нет MFA, rate limiting, полноценной политики паролей, автоматической миграции схемы Alembic, TLS и security review. Демо-счетчики риска **не являются вероятностями мошенничества**. Запускайте только на `127.0.0.1`.
 
-## Возможности v0.1.1
+## Что нового в v0.2.0
 
-- Реестр поставщиков.
-- Проверка счетов: **смена реквизитов +70**, **дубликат номера +60**, **сумма больше 1 млн ₽ +35**.
-- Риск: `LOW` (0–29), `MEDIUM` (30–59), `HIGH` (60–100), максимум 100.
-- Веб-панель на `/`, Swagger на `/docs`, REST API.
-- Журнал операций в БД, без хранения реквизитов в описаниях событий.
-- Запуск локально с SQLite или Docker Compose с PostgreSQL.
-- Тесты с отдельной SQLite базой.
+- **Авторизация:** вход с паролем, Argon2id для хранения хешей, случайные revocable sessions на сервере. В БД сохраняется SHA-256 от токена сессии, не сам токен.
+- **Разделение прав:** `admin` управляет поставщиками, проверяет счета и читает аудит; `analyst` может читать реестр и проверять счета, но не создавать поставщиков и не читать журнал действий.
+- **CSRF:** скрытые токены на всех HTML POST-формах и заголовок `X-CSRF-Token` для изменяющих API-запросов.
+- **Security Events:** события авторизации, выхода и финансовых операций связаны с пользовательским ID.
+- **CSP + заголовки:** нет встроенного JavaScript; session cookies `HttpOnly` и `SameSite=Strict`; `Secure` включается через `COOKIE_SECURE=true` **только на HTTPS**.
+- **Сохранение старых данных:** существующие таблицы `suppliers`, `invoices`, `audit_events` не менялись; новая версия добавляет таблицы `users`, `auth_sessions`, `security_events`.
 
-## Вариант A — быстрый запуск без Docker (Linux / macOS)
-
-```bash
-python3 --version                   # требуется Python 3.12+
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements-dev.txt
-python -m scripts.seed_demo           # пример данных (запуск из корня проекта)
-python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
-```
-
-Открой: http://127.0.0.1:8000 — сайт, http://127.0.0.1:8000/docs — API.
-
-Локальная база: `invoiceshield.db` (игнорируется Git). Чтобы начать с пустой БД, **останови сервер** и удали `invoiceshield.db` (потеря локальных демоданных).
-
-## Вариант B — Docker + PostgreSQL
-
-```bash
-cp .env.example .env
-# Смени POSTGRES_PASSWORD на длинное случайное буквенно-цифровое значение.
-docker compose up --build -d
-# После запуска, в отдельной команде:
-docker compose exec web python -m scripts.seed_demo
-```
-
-**Важно:** образ контейнера должен включать папку `scripts/`. Если меняешь пароль в `.env` после создания тома PostgreSQL, он не сменится автоматически внутри БД. Приложение доступно только по `http://127.0.0.1:8000`.
-
-Остановить: `docker compose down`. Удалить **все локальные данные БД**: `docker compose down -v`.
-
-## Тесты
-
-```bash
-python -m pytest -q
-python -m compileall -q app
-ruff check .
-```
-
-На GitHub Actions тесты и статическая проверка запускаются при каждом push/PR.
-
-## REST API — пример
-
-```bash
-curl http://127.0.0.1:8000/health
-curl -X POST http://127.0.0.1:8000/api/suppliers \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"ООО Пример","bank_account":"RU-DEMO-12345"}'
-
-curl -X POST http://127.0.0.1:8000/api/invoices \
-  -H 'Content-Type: application/json' \
-  -d '{"supplier_id":1,"invoice_number":"DEMO-001","amount_rub":"120000.00","bank_account":"RU-DEMO-99999","issued_on":"2026-10-28"}'
-```
-
-Для новых реквизитов при верном `supplier_id` получится высокий риск. Если предварительно выполнялся `seed_demo`, `supplier_id=1` относится к демо-поставщику, а не к `ООО Пример`: используй ID из ответа API или списка `/api/suppliers`.
-
-## Структура репозитория
+## Важные файлы
 
 ```text
 app/
-  main.py              # FastAPI entrypoint
-  config.py            # DATABASE_URL
-  database.py          # Engine, Session, Base
-  models.py            # ORM-модели
-  schemas.py           # API-валидация
-  routes_api.py        # REST
-  routes_web.py        # HTML endpoints
-  services/
-    invoices.py        # Бизнес-операции
-    risk.py            # Антифрод-правила
-  templates/index.html # Веб-страница
-  static/styles.css    # Стили
-scripts/seed_demo.py   # Демоданные
-tests/                 # API/UI тесты
-docs/                  # ТЗ, архитектура, обучение
-compose.yaml, Dockerfile, .github/workflows/ci.yml
+  main.py              # сборка FastAPI, security headers
+  auth.py              # пароль, сессии, CSRF, проверки ролей
+  routes_auth.py       # логин, логаут, /api/auth/me
+  routes_api.py        # защищенные REST endpoints
+  routes_web.py        # защищенные веб-формы
+  models.py            # SQLAlchemy, включая User / AuthSession
+  services/risk.py     # три антифрод-правила
+  services/invoices.py # транзакции, антифрод-проверки и журнал
+  templates/login.html # логин
+  templates/index.html # dashboard
+  static/app.js        # внешний JavaScript, совместим с CSP
+scripts/manage_users.py # интерактивное создание пользователей
+tests/test_auth.py       # проверки отказов, прав, CSRF, сессий
+docs/SECURITY_MODEL.md   # модель безопасности и ограничения
+docs/LESSON_02_AUTH.md   # учебный разбор авторизации
 ```
 
-## Архитектура и план
+## Новый локальный запуск (macOS / Linux)
 
-- [Техническое задание](docs/TECHNICAL_SPEC.md)
-- [Архитектура и модель угроз](docs/ARCHITECTURE.md)
-- [Учебный план по файлам](docs/LEARNING_PATH.md)
-
-**Следующая версия (v0.2):** авторизация, роли, Alembic, адекватная CSRF-защита, проверка прав доступа и журналирование security-событий. Затем — безопасный импорт PDF, OCR, ML на синтетическом датасете и CI с проверками PostgreSQL.
-
-## GitHub — первая публикация
+Python 3.12+:
 
 ```bash
-git init -b main
-git add .
-git commit -m "feat: build first invoice fraud risk dashboard"
-git remote add origin git@github.com:YOUR_USERNAME/invoiceshield.git
-git push -u origin main
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements-dev.txt
+
+# Создайте первого администратора ДО первого входа.
+# Пароль будет запрошен интерактивно и не попадёт в историю команд.
+python -m scripts.manage_users add --username admin --role admin
+
+# НЕ запускать повторно, если уже есть данные и вы не хотите демоданные:
+python -m scripts.seed_demo
+
+python -m pytest -q
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Создай **пустой** репозиторий `invoiceshield` в своём GitHub и подставь свой логин. Не публикуй `.env`, `*.db`, приватный SSH-ключ или реальные банковские данные. Для доступа к GitHub используется публичная часть SSH-ключа, приватная хранится только локально.
+Открой `http://127.0.0.1:8000/login`, войди логином `admin` и паролем, который ты выбрал. Данные из v0.1.x остаются в `invoiceshield.db`.
 
+Создать аналитика (в другом терминале из корня проекта с активным `.venv`):
 
-## Изменения в v0.1.1
+```bash
+python -m scripts.manage_users add --username analyst --role analyst
+```
 
-- Устранена гонка при одновременном добавлении счетов одного поставщика: в PostgreSQL используется блокировка строки поставщика, в SQLite — транзакция `BEGIN IMMEDIATE`.
-- Заблокирована повторная отправка формы двойным нажатием кнопки.
-- Добавлены автоматические тесты на повторные и параллельные отправки.
-- Старые записи с некорректно рассчитанным риском автоматически не пересчитываются; тестируйте исправление на **новом** номере счета.
+Проверяйте права доступа, войдя каждым пользователем по очереди. Доступ к `/api/*` также требует входа; Swagger `/docs` показывает документацию, но не обходит проверку прав.
+
+### Обновление существующего проекта без потери данных
+
+Для пользователя, уже запускавшего `~/Downloads/invoiceshield-v0.1.0`, есть отдельный архив `invoiceshield-upgrade-v0.2.0.zip` без базы данных и `.venv`. Остановите приложение (`Control+C`), **сделайте копию** `invoiceshield.db`, распакуйте обновление поверх файлов, затем переустановите зависимости и создайте администратора. Подробные команды включены в `docs/UPGRADE_0_2.md`.
+
+## Работа с REST API после логина
+
+Сессия cookie-based; для `POST /api/suppliers` и `POST /api/invoices` требуется **дополнительно** заголовок `X-CSRF-Token`. Локальный браузер, выполнивший вход, может получить token через:
+
+```bash
+# Ввести в адресной строке браузера уже после авторизации:
+http://127.0.0.1:8000/api/auth/me
+```
+
+Ответ содержит текущую роль и CSRF-токен. Для API-клиента необходимо передавать обе вещи: действительный cookie сессии и CSRF-токен. Не передавайте их другим людям и не публикуйте скриншоты с токеном.
+
+## Роли
+
+| Операция | admin | analyst | без входа |
+|---|---|---|---|
+| Просмотреть панель | ✓ | ✓ | ✗ |
+| Просмотреть поставщиков | ✓ | ✓ | ✗ |
+| Создать поставщика | ✓ | ✗ | ✗ |
+| Проверить счёт | ✓ | ✓ | ✗ |
+| Просмотреть аудит (`/api/audit`) | ✓ | ✗ | ✗ |
+| Посмотреть `/health` | ✓ | ✓ | ✓ |
+
+## Запуск с Docker Compose (опционально)
+
+```bash
+cp .env.example .env
+# Поменяйте POSTGRES_PASSWORD на длинный случайный пароль.
+docker compose up --build -d
+docker compose exec web python -m scripts.manage_users add --username admin --role admin
+docker compose exec web python -m scripts.seed_demo
+```
+
+Контейнер слушает только `127.0.0.1:8000`. `docker compose down` сохраняет БД, `docker compose down -v` **удаляет данные**.
+
+## Проверки
+
+```bash
+python -m pytest -q
+python -m compileall -q app scripts
+ruff check .
+```
+
+CI запускает тесты и Ruff на push/PR. Историю исправлений см. `docs/BUGFIX_0_1_1.md`.
+
+## Следующие этапы
+
+1. Надёжные миграции Alembic + rollback/backup перед обновлением схемы.
+2. Ограничение скорости попыток логина и MFA; более подробный аудит админ-действий.
+3. Изоляция файлов, импорт PDF, проверки типа/размера/содержимого.
+4. Бизнес-функции: расследование подозрительных счетов, назначение аналитика, статусы и подтверждение поставщика.
+5. Проверка и развёртывание с HTTPS, PostgreSQL, безопасными секретами и средствами наблюдаемости.
+
+Не вводите пароли, токены и настоящие данные в публичные репозитории. Учётные данные и `.db` игнорируются в `.gitignore`.

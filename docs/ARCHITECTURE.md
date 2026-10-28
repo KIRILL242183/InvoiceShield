@@ -1,3 +1,5 @@
+> **Архивный документ v0.1:** описывает исходную архитектуру. Для изменений безопасности в v0.2 см. [SECURITY_MODEL.md](SECURITY_MODEL.md) и [CHANGELOG.md](CHANGELOG.md).
+
 # Архитектура InvoiceShield v0.1.0
 
 ```mermaid

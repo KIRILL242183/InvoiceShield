@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from app.database import Base, engine
 from app import models  # noqa: F401  (register metadata before create_all)
 from app.routes_api import router as api_router
+from app.routes_auth import router as auth_router
 from app.routes_web import router as web_router
 
 
@@ -19,12 +20,13 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="InvoiceShield",
-    version="0.1.1",
+    version="0.2.0",
     description="Демонстрационный сервис проверки рисков счетов поставщиков.",
     lifespan=lifespan,
 )
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 app.include_router(api_router)
+app.include_router(auth_router)
 app.include_router(web_router)
 
 
@@ -35,9 +37,16 @@ async def basic_security_headers(request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; script-src 'self'; style-src 'self'; "
+        "img-src 'self' data:; form-action 'self'; base-uri 'none'; "
+        "frame-ancestors 'none'; object-src 'none'"
+    )
+    if not request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-store"
     return response
 
 
 @app.get("/health", tags=["System"])
 def health():
-    return {"status": "ok", "version": "0.1.1"}
+    return {"status": "ok", "version": "0.2.0"}

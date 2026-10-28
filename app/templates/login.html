@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Вход — InvoiceShield</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body class="login-body">
+  <main class="login-card">
+    <div class="brand"><span class="brand-icon">◆</span><div>Invoice<span>Shield</span><small>SECURE WORKSPACE · v0.2</small></div></div>
+    <div class="eyebrow">AUTHENTICATION</div>
+    <h1>Вход в систему</h1>
+    <p>Авторизуйтесь для работы с реестром поставщиков и проверками счетов.</p>
+    {% if error %}<div class="alert error" role="alert">{{ error }}</div>{% endif %}
+    <form action="/login" method="post" class="login-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label>Логин<input name="username" autocomplete="username" required maxlength="32" autofocus></label>
+      <label>Пароль<input name="password" type="password" autocomplete="current-password" required></label>
+      <button type="submit" class="button">Войти →</button>
+    </form>
+    <p class="login-notice">Только локальная учебная версия. Пользователи создаются из терминала командой <code>python -m scripts.manage_users</code>.</p>
+  </main>
+</body>
+</html>

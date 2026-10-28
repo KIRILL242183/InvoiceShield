@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.models import AuditEvent, Invoice, Supplier
+from app.models import AuditEvent, Invoice, SecurityEvent, Supplier
 from app.schemas import InvoiceCreate, SupplierCreate
 from app.services.risk import evaluate
 
@@ -32,7 +32,7 @@ class SupplierNotFound(Exception):
     pass
 
 
-def register_supplier(db: Session, payload: SupplierCreate) -> Supplier:
+def register_supplier(db: Session, payload: SupplierCreate, actor_id: int | None = None) -> Supplier:
     supplier = Supplier(name=payload.name, bank_account=payload.bank_account)
     db.add(supplier)
     try:
@@ -41,6 +41,8 @@ def register_supplier(db: Session, payload: SupplierCreate) -> Supplier:
             action="SUPPLIER_CREATED", entity_type="supplier", entity_id=supplier.id,
             details="Поставщик добавлен в реестр",
         ))
+        if actor_id is not None:
+            db.add(SecurityEvent(user_id=actor_id, event="SUPPLIER_CREATED", detail="Поставщик добавлен"))
         db.commit()
     except IntegrityError as exc:
         db.rollback()
@@ -49,7 +51,7 @@ def register_supplier(db: Session, payload: SupplierCreate) -> Supplier:
     return supplier
 
 
-def register_invoice(db: Session, payload: InvoiceCreate) -> Invoice:
+def register_invoice(db: Session, payload: InvoiceCreate, actor_id: int | None = None) -> Invoice:
     supplier = _lock_supplier_for_invoice(db, payload.supplier_id)
     if supplier is None:
         raise SupplierNotFound
@@ -70,6 +72,8 @@ def register_invoice(db: Session, payload: InvoiceCreate) -> Invoice:
         action="INVOICE_CHECKED", entity_type="invoice", entity_id=invoice.id,
         details=f"Анализ завершён; уровень риска: {result.level}; баллы: {result.score}",
     ))
+    if actor_id is not None:
+        db.add(SecurityEvent(user_id=actor_id, event="INVOICE_CHECKED", detail=f"score={result.score}"))
     db.commit()
     db.refresh(invoice)
     return invoice

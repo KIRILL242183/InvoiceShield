@@ -19,7 +19,7 @@ def invoice(client, supplier_id, number="INV-001", amount="150000.00", bank="RU-
 
 
 def test_health(client):
-    assert client.get("/health").json() == {"status": "ok", "version": "0.1.1"}
+    assert client.get("/health").json() == {"status": "ok", "version": "0.2.0"}
 
 
 def test_supplier_create_and_bank_normalization(client):
@@ -108,7 +108,7 @@ def test_audit_log_records_actions_without_bank_numbers(client):
 def test_homepage_and_forms(client):
     assert "InvoiceShield" in client.get("/").text
     result = client.post("/web/suppliers", data={
-        "name": "ООО Пример", "bank_account": "RU1111ABCDE"
+        "name": "ООО Пример", "bank_account": "RU1111ABCDE", "csrf_token": client.csrf_token,
     }, follow_redirects=True)
     assert result.status_code == 200
     assert "ООО Пример" in result.text
@@ -122,7 +122,7 @@ def test_html_form_add_invoice(client):
         "invoice_number": "HTML-1",
         "amount_rub": "55.50",
         "bank_account": "RU-1111-2222",
-        "issued_on": date.today().isoformat(),
+        "issued_on": date.today().isoformat(), "csrf_token": client.csrf_token,
     }, follow_redirects=True)
     assert result.status_code == 200
     assert "HTML-1" in result.text
@@ -187,7 +187,7 @@ def test_duplicate_submitted_from_web_form(client):
         "invoice_number": "DOUBLE-CLICK-01",
         "amount_rub": "50000.00",
         "bank_account": s["bank_account"],
-        "issued_on": "2026-10-28",
+        "issued_on": "2026-10-28", "csrf_token": client.csrf_token,
     }
     client.post("/web/invoices", data=payload)
     client.post("/web/invoices", data=payload)

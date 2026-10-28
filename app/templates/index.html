@@ -14,11 +14,11 @@
     <a class="nav active" href="#overview">◫ &nbsp; Обзор</a>
     <a class="nav" href="#invoice-form">▤ &nbsp; Проверить счёт</a>
     <a class="nav" href="#suppliers">▦ &nbsp; Поставщики</a>
-    <a class="nav" href="#history">◷ &nbsp; История событий</a>
-    <div class="side-bottom"><span class="dot"></span> DEMO ENVIRONMENT<br><small>Локальная версия v0.1.1</small></div>
+    {% if is_admin %}<a class="nav" href="#history">◷ &nbsp; История событий</a>{% endif %}
+    <div class="side-bottom"><span class="dot"></span> DEMO ENVIRONMENT<br><small>Локальная версия v0.2.0 · {{ username }}</small></div>
   </aside>
   <main id="overview">
-    <div class="topbar"><div><div class="eyebrow">ANALYTICS / OVERVIEW</div><h1>Контроль финансовых рисков</h1><p>Проверяйте счета поставщиков и расследуйте сигналы риска.</p></div><a class="button small" href="#invoice-form">+ Новый счёт</a></div>
+    <div class="topbar"><div><div class="eyebrow">ANALYTICS / OVERVIEW</div><h1>Контроль финансовых рисков</h1><p>Проверяйте счета поставщиков и расследуйте сигналы риска.</p></div><div class="top-actions"><span class="user-tag">{{ username }} · {{ 'Администратор' if is_admin else 'Аналитик' }}</span><a class="button small" href="#invoice-form">+ Новый счёт</a><form method="post" action="/logout"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="button small outline" type="submit">Выйти</button></form></div></div>
     {% if notice %}<div class="alert {{ 'error' if notice_is_error else 'success' }}" role="status">{{ notice }}</div>{% endif %}
     <section class="stats">
       <div class="metric"><div class="metric-label">ПОСТАВЩИКОВ <span>↗</span></div><div class="metric-number">{{ stats.suppliers }}</div><div class="metric-bottom">Зарегистрировано</div></div>
@@ -29,7 +29,7 @@
     <section class="split">
       <div class="panel" id="invoice-form"><div class="panel-title"><div><div class="eyebrow">RISK ENGINE</div><h2>Проверить счёт</h2></div><span class="label-tag">3 правила</span></div>
         {% if suppliers %}
-        <form method="post" action="/web/invoices" class="form-grid" id="invoice-form-submit">
+        <form method="post" action="/web/invoices" class="form-grid" id="invoice-form-submit"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <label>Поставщик<select name="supplier_id" id="supplier-select" required><option value="">Выбрать поставщика...</option>{% for supplier in suppliers %}<option value="{{ supplier.id }}" data-bank="{{ supplier.bank_account }}">{{ supplier.name }}</option>{% endfor %}</select></label>
           <label>Номер счёта<input name="invoice_number" placeholder="INV-2026-001" maxlength="64" required></label>
           <label>Сумма, ₽<input type="number" name="amount_rub" placeholder="150000.00" min="0.01" step="0.01" required></label>
@@ -40,11 +40,11 @@
         {% else %}<div class="empty">Сначала зарегистрируйте первого поставщика в блоке справа.</div>{% endif %}
       </div>
       <div class="panel" id="suppliers"><div class="panel-title"><div><div class="eyebrow">COUNTERPARTIES</div><h2>Реестр поставщиков</h2></div></div>
-        <form method="post" action="/web/suppliers" class="form-grid">
+        {% if is_admin %}<form method="post" action="/web/suppliers" class="form-grid"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <label class="full">Название компании<input name="name" placeholder="ООО Альфа Логистик" maxlength="120" required></label>
           <label class="full">Банковские реквизиты<input name="bank_account" placeholder="DE89 3704 0044 0532 0130 00" maxlength="64" required></label>
           <button type="submit" class="button outline full">+ Добавить поставщика</button>
-        </form>
+        </form>{% else %}<div class="empty small-empty">Добавлять поставщиков может только администратор.</div>{% endif %}
         <div class="supplier-list">{% for supplier in suppliers %}<div class="supplier-item"><span class="supplier-avatar">{{ supplier.name[:1]|upper }}</span><div><strong>{{ supplier.name }}</strong><small>Счёт •••• {{ supplier.bank_account[-4:] }}</small></div><span class="healthy">●</span></div>{% else %}<div class="empty small-empty">Поставщиков пока нет.</div>{% endfor %}</div>
       </div>
     </section>
@@ -53,9 +53,9 @@
       {% for invoice in invoices %}<tr><td><strong>{{ invoice.invoice_number }}</strong><small>{{ invoice.issued_on }}</small></td><td>{{ invoice.supplier.name }}</td><td>{{ '%.2f'|format(invoice.amount_rub) }} ₽</td><td><span class="risk-pill {{ invoice.risk_level|lower }}">{{ {'LOW':'Низкий','MEDIUM':'Средний','HIGH':'Высокий'}[invoice.risk_level] }} · {{ invoice.risk_score }}</span></td><td>{% if invoice.findings %}{% for finding in invoice.findings %}<div class="finding" title="{{ finding.message }}">{{ finding.message }}</div>{% endfor %}{% else %}<span class="muted">Не выявлено</span>{% endif %}</td></tr>
       {% else %}<tr><td colspan="5" class="empty">Счета ещё не зарегистрированы. Добавьте первый счёт выше.</td></tr>{% endfor %}</tbody></table></div>
     </section>
-    <section class="panel table-panel" id="history"><div class="panel-title"><div><div class="eyebrow">AUDIT TRAIL</div><h2>История действий</h2></div></div><div class="events">{% for event in audit %}<div class="event"><span class="event-icon">✓</span><div><strong>{{ event.details }}</strong><small>{{ event.action }} · {{ event.entity_type }} #{{ event.entity_id }}</small></div><time>{{ event.created_at.strftime('%d.%m.%Y %H:%M') }}</time></div>{% else %}<div class="empty">Событий пока нет.</div>{% endfor %}</div></section>
-    <footer>InvoiceShield v0.1.1 · Учебная демонстрация · Не используйте реальные платёжные данные · <a href="/docs">API / Swagger</a></footer>
+    {% if is_admin %}<section class="panel table-panel" id="history"><div class="panel-title"><div><div class="eyebrow">AUDIT TRAIL</div><h2>История действий</h2></div></div><div class="events">{% for event in audit %}<div class="event"><span class="event-icon">✓</span><div><strong>{{ event.details }}</strong><small>{{ event.action }} · {{ event.entity_type }} #{{ event.entity_id }}</small></div><time>{{ event.created_at.strftime('%d.%m.%Y %H:%M') }}</time></div>{% else %}<div class="empty">Событий пока нет.</div>{% endfor %}</div></section>{% endif %}
+    <footer>InvoiceShield v0.2.0 · Учебная демонстрация · Не используйте реальные платёжные данные · <a href="/docs">API / Swagger</a></footer>
   </main>
 </div>
-<script>const invoiceForm = document.getElementById('invoice-form-submit'); if (invoiceForm) { invoiceForm.addEventListener('submit', (event) => { if (invoiceForm.dataset.submitted === 'yes') { event.preventDefault(); return; } invoiceForm.dataset.submitted = 'yes'; const button = invoiceForm.querySelector('button[type="submit"]'); if (button) { button.disabled = true; button.textContent = 'Проверяем…'; } }); } const supplier = document.getElementById('supplier-select'); const bank = document.getElementById('bank-account'); if (supplier && bank) { supplier.addEventListener('change', () => { bank.value = supplier.selectedOptions[0]?.dataset.bank || ''; }); }</script>
+<script src="/static/app.js" defer></script>
 </body></html>
