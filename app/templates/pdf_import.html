@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>InvoiceShield | Импорт PDF</title><link rel="stylesheet" href="/static/styles.css"></head>
+<body><div class="shell"><aside class="sidebar"><div class="brand">◆ InvoiceShield</div><div class="nav-label">WORKSPACE</div><a class="nav" href="/">← Обзор</a><a class="nav active" href="/pdf-import">▤ Импорт PDF</a><a class="nav" href="/incidents">Расследования</a><div class="side-bottom">Локальная демонстрация v0.4.0</div></aside>
+<main><div class="topbar"><div><div class="eyebrow">DOCUMENT PROCESSING</div><h1>Импорт PDF-счёта</h1><p>Только текстовые PDF до 2 МиБ и 5 страниц. Документ не сохраняется на сервере.</p></div></div>
+<section class="panel"><div class="panel-title"><h2>1. Проверить документ</h2></div>
+<form action="/pdf-import" method="post" enctype="multipart/form-data" class="form-grid"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><label class="full">PDF-файл<input type="file" name="file" accept="application/pdf,.pdf" required></label><button class="button full" type="submit">Извлечь данные →</button></form>
+{% if error %}<div class="alert error" role="alert">{{ error }}</div>{% endif %}</section>
+{% if draft %}<section class="panel"><div class="panel-title"><h2>2. Проверьте и подтвердите поля</h2></div><div class="alert error" role="status">{% for warning in draft.warnings %}{{ warning }}{% if not loop.last %} · {% endif %}{% endfor %}</div>
+{% if suppliers %}<form action="/web/invoices" method="post" class="form-grid"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<label class="full">Поставщик<select name="supplier_id" required><option value="">Выбрать вручную</option>{% for supplier in suppliers %}<option value="{{ supplier.id }}">{{ supplier.name }}</option>{% endfor %}</select></label>
+<label>Номер счёта<input name="invoice_number" value="{{ draft.invoice_number }}" maxlength="64" required></label>
+<label>Сумма, ₽<input name="amount_rub" type="number" step="0.01" min="0.01" value="{{ draft.amount_rub }}" required></label>
+<label>Дата выставления<input name="issued_on" type="date" value="{{ draft.issued_on }}" required></label>
+<label class="full">Банковские реквизиты<input name="bank_account" value="{{ draft.bank_account }}" maxlength="64" required></label>
+<button type="submit" class="button full">Подтвердить данные и проверить риск →</button></form>
+{% else %}<p>Сначала администратор должен создать поставщика в реестре.</p>{% endif %}</section>{% endif %}
+<footer>Автоматическое извлечение может ошибаться. Проверьте реквизиты по оригиналу независимым способом.</footer></main></div></body></html>
