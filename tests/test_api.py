@@ -19,7 +19,7 @@ def invoice(client, supplier_id, number="INV-001", amount="150000.00", bank="RU-
 
 
 def test_health(client):
-    assert client.get("/health").json() == {"status": "ok", "version": "0.1.0"}
+    assert client.get("/health").json() == {"status": "ok", "version": "0.1.1"}
 
 
 def test_supplier_create_and_bank_normalization(client):
@@ -146,3 +146,50 @@ def test_basic_security_response_headers(client):
     assert r.headers["X-Content-Type-Options"] == "nosniff"
     assert r.headers["X-Frame-Options"] == "DENY"
     assert r.headers["Referrer-Policy"] == "no-referrer"
+
+
+def test_concurrent_submission_flags_one_duplicate(client, monkeypatch):
+    """Two concurrent requests must not both pass as first invoices."""
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+    from time import sleep
+
+    from app.services import invoices
+
+    s = supplier(client, name="ООО Одновременная проверка")
+    barrier = Barrier(2)
+    original = invoices.evaluate
+
+    def slightly_slow_analysis(*args, **kwargs):
+        # Simulates extra analysis time, making accidental overlap realistic.
+        sleep(0.1)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(invoices, "evaluate", slightly_slow_analysis)
+
+    def submit():
+        barrier.wait(timeout=5)
+        return invoice(client, s["id"], number="SAME-123")
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(submit)
+        second = pool.submit(submit)
+        results = [first.result(timeout=15), second.result(timeout=15)]
+
+    assert all(r.status_code == 201 for r in results)
+    assert sorted(r.json()["risk_score"] for r in results) == [0, 60]
+
+
+def test_duplicate_submitted_from_web_form(client):
+    s = supplier(client, name="ООО Проверка браузера")
+    payload = {
+        "supplier_id": str(s["id"]),
+        "invoice_number": "DOUBLE-CLICK-01",
+        "amount_rub": "50000.00",
+        "bank_account": s["bank_account"],
+        "issued_on": "2026-10-28",
+    }
+    client.post("/web/invoices", data=payload)
+    client.post("/web/invoices", data=payload)
+    items = client.get("/api/invoices").json()
+    assert [row["risk_score"] for row in items] == [60, 0]

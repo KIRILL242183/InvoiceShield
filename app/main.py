@@ -19,7 +19,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="InvoiceShield",
-    version="0.1.0",
+    version="0.1.1",
     description="Демонстрационный сервис проверки рисков счетов поставщиков.",
     lifespan=lifespan,
 )
@@ -40,4 +40,4 @@ async def basic_security_headers(request, call_next):
 
 @app.get("/health", tags=["System"])
 def health():
-    return {"status": "ok", "version": "0.1.0"}
+    return {"status": "ok", "version": "0.1.1"}

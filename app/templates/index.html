@@ -15,7 +15,7 @@
     <a class="nav" href="#invoice-form">▤ &nbsp; Проверить счёт</a>
     <a class="nav" href="#suppliers">▦ &nbsp; Поставщики</a>
     <a class="nav" href="#history">◷ &nbsp; История событий</a>
-    <div class="side-bottom"><span class="dot"></span> DEMO ENVIRONMENT<br><small>Локальная версия v0.1.0</small></div>
+    <div class="side-bottom"><span class="dot"></span> DEMO ENVIRONMENT<br><small>Локальная версия v0.1.1</small></div>
   </aside>
   <main id="overview">
     <div class="topbar"><div><div class="eyebrow">ANALYTICS / OVERVIEW</div><h1>Контроль финансовых рисков</h1><p>Проверяйте счета поставщиков и расследуйте сигналы риска.</p></div><a class="button small" href="#invoice-form">+ Новый счёт</a></div>
@@ -29,7 +29,7 @@
     <section class="split">
       <div class="panel" id="invoice-form"><div class="panel-title"><div><div class="eyebrow">RISK ENGINE</div><h2>Проверить счёт</h2></div><span class="label-tag">3 правила</span></div>
         {% if suppliers %}
-        <form method="post" action="/web/invoices" class="form-grid">
+        <form method="post" action="/web/invoices" class="form-grid" id="invoice-form-submit">
           <label>Поставщик<select name="supplier_id" id="supplier-select" required><option value="">Выбрать поставщика...</option>{% for supplier in suppliers %}<option value="{{ supplier.id }}" data-bank="{{ supplier.bank_account }}">{{ supplier.name }}</option>{% endfor %}</select></label>
           <label>Номер счёта<input name="invoice_number" placeholder="INV-2026-001" maxlength="64" required></label>
           <label>Сумма, ₽<input type="number" name="amount_rub" placeholder="150000.00" min="0.01" step="0.01" required></label>
@@ -54,8 +54,8 @@
       {% else %}<tr><td colspan="5" class="empty">Счета ещё не зарегистрированы. Добавьте первый счёт выше.</td></tr>{% endfor %}</tbody></table></div>
     </section>
     <section class="panel table-panel" id="history"><div class="panel-title"><div><div class="eyebrow">AUDIT TRAIL</div><h2>История действий</h2></div></div><div class="events">{% for event in audit %}<div class="event"><span class="event-icon">✓</span><div><strong>{{ event.details }}</strong><small>{{ event.action }} · {{ event.entity_type }} #{{ event.entity_id }}</small></div><time>{{ event.created_at.strftime('%d.%m.%Y %H:%M') }}</time></div>{% else %}<div class="empty">Событий пока нет.</div>{% endfor %}</div></section>
-    <footer>InvoiceShield v0.1.0 · Учебная демонстрация · Не используйте реальные платёжные данные · <a href="/docs">API / Swagger</a></footer>
+    <footer>InvoiceShield v0.1.1 · Учебная демонстрация · Не используйте реальные платёжные данные · <a href="/docs">API / Swagger</a></footer>
   </main>
 </div>
-<script>const supplier = document.getElementById('supplier-select'); const bank = document.getElementById('bank-account'); if (supplier && bank) { supplier.addEventListener('change', () => { bank.value = supplier.selectedOptions[0]?.dataset.bank || ''; }); }</script>
+<script>const invoiceForm = document.getElementById('invoice-form-submit'); if (invoiceForm) { invoiceForm.addEventListener('submit', (event) => { if (invoiceForm.dataset.submitted === 'yes') { event.preventDefault(); return; } invoiceForm.dataset.submitted = 'yes'; const button = invoiceForm.querySelector('button[type="submit"]'); if (button) { button.disabled = true; button.textContent = 'Проверяем…'; } }); } const supplier = document.getElementById('supplier-select'); const bank = document.getElementById('bank-account'); if (supplier && bank) { supplier.addEventListener('change', () => { bank.value = supplier.selectedOptions[0]?.dataset.bank || ''; }); }</script>
 </body></html>

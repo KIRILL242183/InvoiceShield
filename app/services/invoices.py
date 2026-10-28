@@ -8,6 +8,22 @@ from app.schemas import InvoiceCreate, SupplierCreate
 from app.services.risk import evaluate
 
 
+def _lock_supplier_for_invoice(db: Session, supplier_id: int) -> Supplier | None:
+    """Serialize checks for the same supplier to avoid duplicate-detection races.
+
+    PostgreSQL supports row-level FOR UPDATE locks. SQLite cannot lock a row,
+    so BEGIN IMMEDIATE reserves the single-writer lock before reading invoices.
+    This is deliberately simple and suitable for our educational application.
+    """
+    if db.bind is not None and db.bind.dialect.name == "sqlite":
+        # Must be executed before the first SELECT inside this transaction.
+        db.connection().exec_driver_sql("BEGIN IMMEDIATE")
+        return db.get(Supplier, supplier_id)
+    return db.scalar(
+        select(Supplier).where(Supplier.id == supplier_id).with_for_update()
+    )
+
+
 class SupplierAlreadyExists(Exception):
     pass
 
@@ -34,7 +50,7 @@ def register_supplier(db: Session, payload: SupplierCreate) -> Supplier:
 
 
 def register_invoice(db: Session, payload: InvoiceCreate) -> Invoice:
-    supplier = db.get(Supplier, payload.supplier_id)
+    supplier = _lock_supplier_for_invoice(db, payload.supplier_id)
     if supplier is None:
         raise SupplierNotFound
     result = evaluate(db, supplier, payload)
