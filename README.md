@@ -1,4 +1,4 @@
-# InvoiceShield v0.3.0 🛡️
+# InvoiceShield v0.4.0 🛡️
 
 **Учебный FinTech + Cybersecurity проект на Python**: защищённая веб-платформа анализа счетов и расследования подозрительных платежей.
 
