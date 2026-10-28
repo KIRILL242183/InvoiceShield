@@ -13,3 +13,13 @@ htmlcov/
 .idea/
 .vscode/
 .DS_Store
+
+# Private credentials and local backups
+*.pem
+*.key
+*.p12
+*.pfx
+*.db-*
+*.sqlite3-*
+*.bak
+*backup*.db
