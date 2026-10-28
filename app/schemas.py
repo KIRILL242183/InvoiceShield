@@ -81,3 +81,53 @@ class AuditOut(BaseModel):
     entity_id: int
     details: str
     created_at: datetime
+
+
+class IncidentStatusChange(BaseModel):
+    status: str = Field(pattern=r"^(IN_REVIEW|RESOLVED|FALSE_POSITIVE)$")
+    version: int = Field(ge=1)
+
+
+class IncidentAssign(BaseModel):
+    assignee_id: int | None = Field(default=None, gt=0)
+    version: int = Field(ge=1)
+
+
+class IncidentCommentCreate(BaseModel):
+    comment: str = Field(min_length=1, max_length=1000)
+
+    @field_validator("comment")
+    @classmethod
+    def non_empty(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Пустой комментарий")
+        return value
+
+
+class IncidentOut(BaseModel):
+    id: int
+    invoice_id: int
+    invoice_number: str
+    supplier_name: str
+    risk_score: int
+    risk_level: str
+    status: str
+    assignee_username: str | None
+    version: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class IncidentEventOut(BaseModel):
+    id: int
+    event_type: str
+    actor_username: str | None
+    details: str
+    comment: str | None
+    created_at: datetime
+
+
+class IncidentDetailOut(BaseModel):
+    incident: IncidentOut
+    events: list[IncidentEventOut]

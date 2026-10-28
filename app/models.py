@@ -2,7 +2,7 @@
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Integer, JSON, String
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Integer, JSON, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -86,3 +86,38 @@ class SecurityEvent(Base):
     event: Mapped[str] = mapped_column(String(48))
     detail: Mapped[str] = mapped_column(String(128))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class Incident(Base):
+    """A review case linked to exactly one suspicious invoice."""
+    __tablename__ = "incidents"
+    __table_args__ = (
+        UniqueConstraint("invoice_id", name="uq_incidents_invoice_id"),
+        CheckConstraint("status IN ('OPEN', 'IN_REVIEW', 'RESOLVED', 'FALSE_POSITIVE')", name="ck_incident_status"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    invoice_id: Mapped[int] = mapped_column(ForeignKey("invoices.id"), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), default="OPEN", nullable=False)
+    assignee_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    invoice: Mapped[Invoice] = relationship()
+    assignee: Mapped[User | None] = relationship()
+    events: Mapped[list["IncidentEvent"]] = relationship(back_populates="incident")
+
+
+class IncidentEvent(Base):
+    """Append-only investigation timeline; comment contents are never copied to security logs."""
+    __tablename__ = "incident_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    incident_id: Mapped[int] = mapped_column(ForeignKey("incidents.id"), nullable=False, index=True)
+    actor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    event_type: Mapped[str] = mapped_column(String(24), nullable=False)
+    details: Mapped[str] = mapped_column(String(240), nullable=False)
+    comment: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    incident: Mapped[Incident] = relationship(back_populates="events")
+    actor: Mapped[User | None] = relationship()

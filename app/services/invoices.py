@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.models import AuditEvent, Invoice, SecurityEvent, Supplier
+from app.models import AuditEvent, Incident, IncidentEvent, Invoice, SecurityEvent, Supplier
 from app.schemas import InvoiceCreate, SupplierCreate
 from app.services.risk import evaluate
 
@@ -68,6 +68,14 @@ def register_invoice(db: Session, payload: InvoiceCreate, actor_id: int | None =
     )
     db.add(invoice)
     db.flush()
+    if result.level in ("MEDIUM", "HIGH"):
+        incident = Incident(invoice_id=invoice.id)
+        db.add(incident)
+        db.flush()
+        db.add(IncidentEvent(
+            incident_id=incident.id, actor_id=actor_id, event_type="CREATED",
+            details="Инцидент открыт автоматически после проверки счёта",
+        ))
     db.add(AuditEvent(
         action="INVOICE_CHECKED", entity_type="invoice", entity_id=invoice.id,
         details=f"Анализ завершён; уровень риска: {result.level}; баллы: {result.score}",

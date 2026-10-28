@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.auth import Identity, ensure_admin, lookup_identity, require_web_user, verify_csrf
 from app.database import get_db
 from app.schemas import InvoiceCreate, SupplierCreate
+from app.services.incidents import list_incidents
 from app.services.invoices import (
     SupplierAlreadyExists, SupplierNotFound, list_audit, list_invoices,
     list_suppliers, register_invoice, register_supplier,
@@ -39,6 +40,7 @@ def home(request: Request, notice: str = "", db: Session = Depends(get_db)):
         return RedirectResponse(url="/login", status_code=303)
     suppliers = list_suppliers(db)
     invoices = list_invoices(db)
+    incidents = list_incidents(db, limit=6)
     is_admin = identity.user.role == "admin"
     audit = list_audit(db, limit=15) if is_admin else []
     stats = {
@@ -50,6 +52,7 @@ def home(request: Request, notice: str = "", db: Session = Depends(get_db)):
         request=request, name="index.html",
         context={
             "suppliers": suppliers, "invoices": invoices, "audit": audit,
+            "incidents": incidents,
             "stats": stats, "today": date.today().isoformat(),
             "notice": NOTICES.get(notice),
             "notice_is_error": notice not in ("supplier_added", "invoice_added"),
