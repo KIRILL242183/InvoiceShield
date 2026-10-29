@@ -1,8 +1,12 @@
 """Application entrypoint."""
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+
+from app.database import get_db
 
 from app.database import Base, engine
 from app import models  # noqa: F401  (register metadata before create_all)
@@ -24,7 +28,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="InvoiceShield",
-    version="0.6.0",
+    version="0.7.0",
     description="Демонстрационный сервис проверки рисков счетов поставщиков.",
     lifespan=lifespan,
 )
@@ -45,6 +49,9 @@ async def basic_security_headers(request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    if request.url.scheme == "https":
+        response.headers["Strict-Transport-Security"] = "max-age=31536000"
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; script-src 'self'; style-src 'self'; "
         "img-src 'self' data:; form-action 'self'; base-uri 'none'; "
@@ -57,4 +64,14 @@ async def basic_security_headers(request, call_next):
 
 @app.get("/health", tags=["System"])
 def health():
-    return {"status": "ok", "version": "0.6.0"}
+    return {"status": "ok", "version": "0.7.0"}
+
+
+@app.get("/ready", tags=["System"])
+def ready(db: Session = Depends(get_db)):
+    """Readiness checks the DB responds, rather than only the process."""
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="База данных недоступна") from exc
+    return {"status": "ready", "version": "0.7.0"}
