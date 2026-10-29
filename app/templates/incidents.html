@@ -1,16 +1,14 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Расследования — InvoiceShield</title><link rel="stylesheet" href="/static/styles.css"></head>
-<body><div class="shell">
-  <aside class="sidebar"><div class="brand"><span class="brand-icon">◆</span><div>Invoice<span>Shield</span><small>FRAUD PREVENTION</small></div></div>
-    <div class="nav-label">WORKSPACE</div><a class="nav" href="/">◫ &nbsp; Обзор</a><a class="nav active" href="/incidents">⌕ &nbsp; Расследования</a>
-    <div class="side-bottom"><span class="dot"></span> DEMO ENVIRONMENT<br><small>v0.3.0 · {{ username }}</small></div>
-  </aside>
-  <main><div class="topbar"><div><div class="eyebrow">INVESTIGATIONS / QUEUE</div><h1>Центр расследований</h1><p>Счета с риском MEDIUM или HIGH попадают сюда автоматически.</p></div><div class="top-actions"><span class="user-tag">{{ username }}</span><a class="button small outline" href="/">← На главную</a><form method="post" action="/logout"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="button small outline">Выйти</button></form></div></div>
+<body><a class="skip-link" href="#main-content">Перейти к содержимому</a>
+<div class="shell">
+  {% include "_sidebar.html" %}
+  <main id="main-content"><div class="topbar"><div><div class="eyebrow">INVESTIGATIONS / QUEUE</div><h1>Центр расследований</h1><p>Счета с риском MEDIUM или HIGH попадают сюда автоматически.</p></div><div class="top-actions"><span class="user-tag">{{ username }}</span><a class="button small outline" href="/">← На главную</a><form method="post" action="/logout"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="button small outline">Выйти</button></form></div></div>
     <section class="panel table-panel"><div class="panel-title"><div><div class="eyebrow">CASE MANAGEMENT</div><h2>Очередь инцидентов</h2></div><span class="label-tag">Последние 100</span></div>
-      <div class="case-filters"><a class="filter {% if status_filter == '' %}selected{% endif %}" href="/incidents">Все</a><a class="filter {% if status_filter == 'OPEN' %}selected{% endif %}" href="/incidents?status=OPEN">Новые</a><a class="filter {% if status_filter == 'IN_REVIEW' %}selected{% endif %}" href="/incidents?status=IN_REVIEW">На проверке</a><a class="filter {% if status_filter == 'RESOLVED' %}selected{% endif %}" href="/incidents?status=RESOLVED">Решены</a><a class="filter {% if status_filter == 'FALSE_POSITIVE' %}selected{% endif %}" href="/incidents?status=FALSE_POSITIVE">Ложные сигналы</a></div>
-      <div class="table-wrap"><table><thead><tr><th>КЕЙС</th><th>ПОСТАВЩИК / СЧЁТ</th><th>РИСК</th><th>СТАТУС</th><th>ИСПОЛНИТЕЛЬ</th><th>ДАТА</th></tr></thead><tbody>
+      <nav class="case-filters" aria-label="Фильтр статуса"><a class="filter {% if status_filter == '' %}selected{% endif %}" href="/incidents">Все</a><a class="filter {% if status_filter == 'OPEN' %}selected{% endif %}" href="/incidents?status=OPEN">Новые</a><a class="filter {% if status_filter == 'IN_REVIEW' %}selected{% endif %}" href="/incidents?status=IN_REVIEW">На проверке</a><a class="filter {% if status_filter == 'RESOLVED' %}selected{% endif %}" href="/incidents?status=RESOLVED">Решены</a><a class="filter {% if status_filter == 'FALSE_POSITIVE' %}selected{% endif %}" href="/incidents?status=FALSE_POSITIVE">Ложные сигналы</a></nav>
+      <div class="table-wrap"><table><thead><tr><th scope="col">КЕЙС</th><th scope="col">ПОСТАВЩИК / СЧЁТ</th><th scope="col">РИСК</th><th scope="col">СТАТУС</th><th scope="col">ИСПОЛНИТЕЛЬ</th><th scope="col">ДАТА</th></tr></thead><tbody>
       {% for case in cases %}<tr><td><a class="incident-link" href="/incidents/{{ case.id }}">INC-{{ case.id }} ↗</a></td><td><strong>{{ case.invoice.supplier.name }}</strong><small>{{ case.invoice.invoice_number }}</small></td><td><span class="risk-pill {{ case.invoice.risk_level|lower }}">{{ case.invoice.risk_score }} баллов</span></td><td><span class="case-status {{ case.status|lower }}">{{ {'OPEN':'Новый','IN_REVIEW':'На проверке','RESOLVED':'Решён','FALSE_POSITIVE':'Ложный сигнал'}[case.status] }}</span></td><td>{{ case.assignee.username if case.assignee else '—' }}</td><td>{{ case.created_at.strftime('%d.%m.%Y') }}</td></tr>
       {% else %}<tr><td colspan="6" class="empty">По этому фильтру инцидентов нет.</td></tr>{% endfor %}
       </tbody></table></div></section>
-      <footer>InvoiceShield v0.3.0 · Демонстрационная среда · Только синтетические данные</footer>
+      <footer>InvoiceShield v{{ app_version }} · Демонстрационная среда · Только синтетические данные</footer>
   </main></div></body></html>
