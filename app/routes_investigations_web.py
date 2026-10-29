@@ -3,7 +3,6 @@ from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -16,8 +15,10 @@ from app.services.incidents import (
     list_events, list_incidents,
 )
 
+from app.ui import make_templates
+
 router = APIRouter(include_in_schema=False)
-templates = Jinja2Templates(directory="app/templates")
+templates = make_templates()
 MESSAGES = {
     "status": "Статус изменён.", "assigned": "Ответственный назначен.",
     "comment": "Комментарий добавлен.",

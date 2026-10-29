@@ -9,6 +9,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.version import APP_VERSION
 
 from app.database import Base, engine
 from app import models  # noqa: F401  (register metadata before create_all)
@@ -30,7 +31,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="InvoiceShield",
-    version="0.8.0",
+    version=APP_VERSION,
     description="Демонстрационный сервис проверки рисков счетов поставщиков.",
     lifespan=lifespan,
 )
@@ -76,7 +77,7 @@ async def basic_security_headers(request, call_next):
 
 @app.get("/health", tags=["System"])
 def health():
-    return {"status": "ok", "version": "0.8.0"}
+    return {"status": "ok", "version": APP_VERSION}
 
 
 @app.get("/ready", tags=["System"])
@@ -87,4 +88,4 @@ def ready(db: Session = Depends(get_db)):
     except Exception as exc:
         # Do not leak driver details, paths, credentials or SQL to clients.
         raise HTTPException(status_code=503, detail="База данных недоступна") from exc
-    return {"status": "ready", "version": "0.8.0"}
+    return {"status": "ready", "version": APP_VERSION}

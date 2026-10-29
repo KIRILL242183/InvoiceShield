@@ -1,7 +1,6 @@
 """Authenticated PDF preview; no original documents are stored."""
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.auth import Identity, require_web_user, verify_csrf
@@ -9,15 +8,17 @@ from app.database import get_db
 from app.services.invoices import list_suppliers
 from app.services.pdf_import import MAX_UPLOAD_BYTES, PdfRejected, extract_draft
 
+from app.ui import make_templates
+
 router = APIRouter(include_in_schema=False)
-templates = Jinja2Templates(directory="app/templates")
+templates = make_templates()
 
 
 @router.get("/pdf-import", response_class=HTMLResponse)
 def upload_page(request: Request, identity: Identity = Depends(require_web_user), db: Session = Depends(get_db)):
     return templates.TemplateResponse(request=request, name="pdf_import.html", context={
         "csrf_token": identity.session.csrf_token, "suppliers": list_suppliers(db),
-        "draft": None, "error": None,
+        "draft": None, "error": None, "username": identity.user.username,
     })
 
 
@@ -39,5 +40,5 @@ async def preview_pdf(request: Request, file: UploadFile = File(...), csrf_token
         await file.close()
     return templates.TemplateResponse(request=request, name="pdf_import.html", context={
         "csrf_token": identity.session.csrf_token, "suppliers": list_suppliers(db),
-        "draft": draft, "error": error,
+        "draft": draft, "error": error, "username": identity.user.username,
     }, status_code=422 if error else 200)
