@@ -1,4 +1,4 @@
-# InvoiceShield v0.7.0 🛡️
+# InvoiceShield v0.8.0 🛡️
 
 **Учебный FinTech + Cybersecurity проект на Python**: защищённая веб-платформа анализа счетов и расследования подозрительных платежей.
 
@@ -8,20 +8,16 @@
 
 - Реестр поставщиков и счетов, обнаружение смены реквизитов (+70), повторов (+60) и счетов свыше 1 млн рублей (+35), итог ограничен 100.
 - Авторизация с Argon2id; серверные отзывные сессии и CSRF-токены, роли `admin` и `analyst`.
-- 5 неудачных попыток входа за 15 минут с одного IP для одного логина → временная блокировка на 15 минут (HTTP 429).
+- Серверное ограничение ошибочных входов: 5 попыток за 15 минут с одного адреса для одного логина, далее 15-минутная блокировка (HTTP 429).
 - Автоматическое создание инцидентов `OPEN` при `MEDIUM` и `HIGH` риске.
 - Статусы: `OPEN → IN_REVIEW → RESOLVED` или `FALSE_POSITIVE`; повторное открытие переводит в `IN_REVIEW`.
 - Назначение исполнителей администратором; комментарии и журнал событий кейса; защита от устаревших версий через поле `version` и HTTP 409.
-- Аналитический раздел `/analytics`: фильтрация счетов, распределение рисков и инцидентов, защищённый CSV-экспорт для администратора.
-- `GET /health` — liveness; `GET /ready` — проверка БД; HSTS на HTTPS и Permissions-Policy.
+- Аналитическая панель `/analytics`: фильтры по дате выставления, поставщику, уровню риска; распределения рисков и статусов; CSV-экспорт без банковских реквизитов (admin).
+- `GET /health` (жив ли процесс), `GET /ready` (доступна ли база данных), HSTS для HTTPS и Permissions-Policy.
 - REST API (`/docs`), тесты Pytest, CI GitHub Actions.
 
 ### Стек
 Python 3.12+, FastAPI, SQLAlchemy, SQLite (локально) / PostgreSQL (через Docker Compose), Jinja2, HTML/CSS, Pytest, Docker, GitHub Actions.
-
-## Новое в v0.7
-
-См. [инструкцию по обновлению](docs/UPGRADE_0_7.md) и [урок 7](docs/LESSON_07_LOGIN_HARDENING.md). Таблица счётчиков создаётся автоматически; старые данные сохраняются.
 
 ## Самый быстрый запуск с нуля (macOS / Linux)
 
@@ -41,7 +37,7 @@ python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 python -m scripts.manage_users add --username analyst --role analyst
 ```
 
-Создайте счёт с новыми банковскими реквизитами или суммой свыше 1 млн рублей. После анализа появится запись на `/incidents`.
+Создайте счёт с новыми банковскими реквизитами или суммой свыше 1 млн рублей. После анализа появится запись на `/incidents`. Аналитика доступна на `/analytics`; администратор может скачать фильтрованный CSV без реквизитов.
 
 **Если вы обновляете существующую v0.2 на Mac, не следуйте запуску с нуля.** Вместо этого смотрите [инструкцию по обновлению](docs/UPGRADE_0_3.md), чтобы сохранить базу, аккаунты и старые счета. Важная дополнительная команда `python -m scripts.migrate_v03` создаёт кейсы для ранее проверенных подозрительных счетов; её безопасно повторять.
 
@@ -53,7 +49,11 @@ python -m scripts.manage_users add --username analyst --role analyst
 | Проверка счетов | Да | Да |
 | Смена статуса кейса, добавление комментария | Да | Да |
 | Назначение исполнителя | Да | Нет (403) |
+| Аналитика / сводные показатели | Да | Да |
+| CSV-экспорт с данными счетов (без банковских реквизитов) | Да | Нет (403) |
 | Создание поставщиков и просмотр общего аудита | Да | Нет (403) |
+
+REST API аналитики: `GET /api/analytics/summary`, `GET /api/analytics/export.csv` (admin). Фильтры: `from_date`, `to_date`, `supplier_id`, `risk_level`. Даты относятся к **дате выставления счёта**, а не к дате загрузки. При результате более 5 000 счетов сервер возвращает HTTP 413 вместо обрезки отчёта. Выгрузки Excel/CSV могут быть небезопасными при открытии в программах таблиц; текстовые значения экранируются от формульной инъекции.
 
 REST API расследований:
 
@@ -79,6 +79,9 @@ app/
   services/invoices.py              # проверка счетов, автоматическое открытие кейса
   services/incidents.py             # инциденты, переходы, проверка версии
   templates/incident_detail.html    # страница расследования
+  routes_reports.py                  # веб-аналитика и API-отчёты
+  services/analytics.py              # чистые агрегаты и защищённый CSV
+  templates/analytics.html           # аналитический интерфейс
 scripts/migrate_v03.py             # создание таблиц и backfill старых счетов
 tests/test_incidents.py            # регрессионные и security-тесты
 docs/LESSON_03_INCIDENTS.md        # обучающий разбор
@@ -101,6 +104,8 @@ docs/LESSON_03_INCIDENTS.md        # обучающий разбор
 - [Техническое задание предыдущей версии](docs/TECHNICAL_SPEC.md)
 - [Архитектура предыдущей версии](docs/ARCHITECTURE.md)
 - [Security model v0.2 (общие ограничения сохраняются)](docs/SECURITY_MODEL.md)
+- [Урок 6: агрегирование рисков и безопасный CSV](docs/LESSON_06_ANALYTICS.md)
+- [Обновление 0.5 → 0.6](docs/UPGRADE_0_6.md)
 - [Changelog](docs/CHANGELOG.md)
 
 ## Тестирование
@@ -110,7 +115,7 @@ python -m pytest -q
 python -m compileall -q app scripts
 ```
 
-Последний локальный запуск разработчика: **83 passed**. Docker + PostgreSQL не проходил полноценную интеграционную проверку в этой среде. При развертывании сначала настройте TLS, `COOKIE_SECURE=true`, миграции, ограничения запросов и мониторинг.
+Текущий локальный тестовый прогон: **107 passed**. `ruff` и Docker + PostgreSQL проверяются отдельно в GitHub Actions; Docker не был доступен в локальном окружении генерации. При развертывании сначала настройте TLS, `COOKIE_SECURE=true`, миграции, ограничения запросов и мониторинг.
 
 ## Разработка и история версий
 
@@ -138,8 +143,32 @@ python -m compileall -q app scripts
 - [Обновление существующей версии на Mac](docs/UPGRADE_0_5.md)
 - Проверка: `python -m pytest -q` (ожидается 72 теста).
 
-## Аналитика v0.6.0
+## Обновление до v0.7
 
-`/analytics` — сводные показатели по счетам и поставщикам. `GET /api/analytics/summary` — JSON-метрики; `GET /api/analytics/export.csv` — CSV только для admin. Фильтры: `from_date`, `to_date`, `supplier_id`, `risk_level`.
+См. [инструкцию по обновлению](docs/UPGRADE_0_7.md) и [урок 7 по защите входа](docs/LESSON_07_LOGIN_HARDENING.md). Новая таблица `login_throttles` создаётся автоматически при первом запуске v0.7; пользовательские данные не мигрируются.
 
-Максимум 5000 строк; превышение возвращает HTTP 413. CSV не включает банковские реквизиты, строки защищены от типовой формульной инъекции. Данные являются учебными, не показывают реальные платежи или убытки. [Урок 6](docs/LESSON_06_ANALYTICS.md), [обновление v0.6](docs/UPGRADE_0_6.md).
+
+## Новое в v0.8 — надёжность и эксплуатация
+
+- **SQLite backup/verify/restore** без перезаписи существующей БД. Онлайн-снимок создаётся через SQLite Backup API и проверяется на целостность; файл имеет приватные права (`0600` на Unix). Все архивы содержат чувствительные данные — не загружайте их в репозиторий.
+- **Docker Compose**: веб-контейнер без привилегий, файловая система только для чтения, readiness healthcheck, PostgreSQL без внешнего порта. Публичный сервер не предусмотрен.
+- **Наблюдаемость:** `X-Request-ID` в ответах, HTTP-лог без query string, cookie и тела запроса.
+- **Smoke check:** `python -m scripts.smoke_check` для локального сервиса.
+- **CI**: Pytest, compileall, Ruff и отдельный Docker Compose smoke c PostgreSQL.
+
+[Операционная инструкция: backups](docs/OPS_BACKUP.md) · [Обновление v0.7→v0.8](docs/UPGRADE_0_8.md) · [Демонстрация для портфолио](docs/PORTFOLIO_DEMO.md) · [Урок 8](docs/LESSON_08_OPERATIONS.md)
+
+```bash
+# Локальный SQLite (папку держать за пределами Git-репозитория):
+python -m scripts.backup_sqlite backup --output ~/InvoiceShield-private/backup-2026-10-29.db
+python -m scripts.backup_sqlite verify --input ~/InvoiceShield-private/backup-2026-10-29.db
+
+# Smoke-проверка уже работающего приложения:
+python -m scripts.smoke_check
+
+# Docker Compose с PostgreSQL (отдельная от SQLite база):
+cp .env.example .env  # обязательно замените пароль
+docker compose up --build -d --wait
+```
+
+Для локальной Docker-версии нужно отдельно создать администратора через `docker compose run --rm web python -m scripts.manage_users add --username admin --role admin`. Команда backup для SQLite к PostgreSQL не применяется, см. `pg_dump` в операционной инструкции.

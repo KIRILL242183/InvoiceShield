@@ -12,5 +12,22 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install -r requirements-dev.txt
       - run: python -m pytest -q
-      - run: python -m compileall -q app
+      - run: python -m compileall -q app scripts
       - run: ruff check .
+  docker-postgres-smoke:
+    runs-on: ubuntu-latest
+    env:
+      # Synthetic CI-only password: not a real credential.
+      POSTGRES_PASSWORD: ci_only_synthetic_password_12345
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compose build and ready check with PostgreSQL
+        run: docker compose up --build --wait --wait-timeout 180
+      - name: Verify /health and /ready inside web container
+        run: docker compose exec -T web python -m scripts.smoke_check
+      - name: Container status
+        if: always()
+        run: docker compose ps
+      - name: Clean up temporary demo database
+        if: always()
+        run: docker compose down --volumes --remove-orphans

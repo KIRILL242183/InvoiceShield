@@ -1,5 +1,7 @@
 """Application entrypoint."""
 from contextlib import asynccontextmanager
+import logging
+from uuid import uuid4
 
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.staticfiles import StaticFiles
@@ -28,7 +30,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="InvoiceShield",
-    version="0.7.0",
+    version="0.8.0",
     description="Демонстрационный сервис проверки рисков счетов поставщиков.",
     lifespan=lifespan,
 )
@@ -45,7 +47,17 @@ app.include_router(investigation_web_router)
 @app.middleware("http")
 async def basic_security_headers(request, call_next):
     """Basic browser hardening; not a substitute for auth/CSRF/TLS."""
+    request_id = uuid4().hex
+    request.state.request_id = request_id
     response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    # Log a route template, not the raw URL/query string, cookies or body.
+    route = request.scope.get("route")
+    route_template = getattr(route, "path", "<unmatched>")
+    logging.getLogger("invoiceshield.requests").info(
+        "request_id=%s method=%s route=%s status=%s",
+        request_id, request.method, route_template, response.status_code,
+    )
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "no-referrer"
@@ -64,14 +76,15 @@ async def basic_security_headers(request, call_next):
 
 @app.get("/health", tags=["System"])
 def health():
-    return {"status": "ok", "version": "0.7.0"}
+    return {"status": "ok", "version": "0.8.0"}
 
 
 @app.get("/ready", tags=["System"])
 def ready(db: Session = Depends(get_db)):
-    """Readiness checks the DB responds, rather than only the process."""
+    """Readiness checks the DB actually responds, not just that the process lives."""
     try:
         db.execute(text("SELECT 1"))
     except Exception as exc:
+        # Do not leak driver details, paths, credentials or SQL to clients.
         raise HTTPException(status_code=503, detail="База данных недоступна") from exc
-    return {"status": "ready", "version": "0.7.0"}
+    return {"status": "ready", "version": "0.8.0"}

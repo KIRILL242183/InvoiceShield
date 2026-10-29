@@ -1,21 +1,37 @@
-# Demo stack. Web is reachable ONLY from localhost, not external interfaces.
+# Local-only demo; do not expose to the public Internet without security review.
 services:
   web:
     build: .
     environment:
-      DATABASE_URL: postgresql+psycopg://invoiceshield:${POSTGRES_PASSWORD:?Copy .env.example to .env}@db:5432/invoiceshield
+      DATABASE_URL: postgresql+psycopg://invoiceshield:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/invoiceshield
+      COOKIE_SECURE: "false"  # localhost HTTP only; HTTPS deployment needs true
     depends_on:
       db:
         condition: service_healthy
     ports:
       - "127.0.0.1:8000:8000"
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=3).read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
     restart: unless-stopped
   db:
     image: postgres:17-alpine
     environment:
       POSTGRES_DB: invoiceshield
       POSTGRES_USER: invoiceshield
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Copy .env.example to .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

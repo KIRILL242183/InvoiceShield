@@ -23,3 +23,6 @@ htmlcov/
 *.sqlite3-*
 *.bak
 *backup*.db
+*.backup
+*.db-*
+backups/

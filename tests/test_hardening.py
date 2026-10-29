@@ -1,4 +1,4 @@
-"""Regression tests for server-side login throttling and readiness."""
+"""Security regression tests for server-side throttling and readiness."""
 from datetime import timedelta
 
 from fastapi.testclient import TestClient
@@ -25,13 +25,16 @@ def test_login_throttled_after_five_failures_and_valid_password_denied(client):
     for _ in range(4):
         failed = post_login(visitor, "admin", "incorrect-passphrase")
         assert failed.status_code == 200
+        assert "Неверный логин" in failed.text
     blocked = post_login(visitor, "admin", "incorrect-passphrase")
     assert blocked.status_code == 429
     assert blocked.headers["Retry-After"] == "900"
-    assert post_login(visitor, "admin", "secure_test_password_123").status_code == 429
+    correct = post_login(visitor, "admin", "secure_test_password_123")
+    assert correct.status_code == 429
     with Session(client.test_engine) as db:
         counter = db.get(LoginThrottle, login_throttle_key("admin", "testclient"))
-        assert counter.failures == 5 and counter.blocked_until is not None
+        assert counter is not None and counter.failures == 5
+        assert counter.blocked_until is not None
 
 
 def test_success_clears_counter(client):
@@ -72,6 +75,8 @@ def test_distinct_source_does_not_share_throttle_counter(client):
     visitor = TestClient(app)
     for _ in range(5):
         post_login(visitor, "admin", "wrong-password")
+    # Simulate a second remote address at the service layer. No untrusted
+    # X-Forwarded-For header is consulted by the app.
     with Session(client.test_engine) as db:
         other, _ = auth.login_throttle_state(db, "admin", "192.0.2.22")
         assert other.failures == 0
@@ -80,10 +85,8 @@ def test_distinct_source_does_not_share_throttle_counter(client):
 
 def test_long_password_fails_before_argon2_and_no_login(client, monkeypatch):
     visitor = TestClient(app)
-
     def must_not_verify(*args, **kwargs):
         raise AssertionError("Argon2 should not run on unbounded input")
-
     monkeypatch.setattr("app.routes_auth.check_password", must_not_verify)
     response = post_login(visitor, "admin", "x" * 1025)
     assert response.status_code == 200
@@ -92,10 +95,10 @@ def test_long_password_fails_before_argon2_and_no_login(client, monkeypatch):
 
 def test_readiness_and_browser_headers(client):
     ready = client.get("/ready")
-    assert ready.json() == {"status": "ready", "version": "0.7.0"}
+    assert ready.json() == {"status": "ready", "version": "0.8.0"}
     assert ready.headers["Permissions-Policy"] == "camera=(), microphone=(), geolocation=()"
     assert "Strict-Transport-Security" not in ready.headers
-    assert client.get("/health").json() == {"status": "ok", "version": "0.7.0"}
+    assert client.get("/health").json() == {"status": "ok", "version": "0.8.0"}
 
 
 def test_csrf_violations_not_counted_as_password_failures(client):
