@@ -1,5 +1,5 @@
-from app.version import APP_VERSION
 """Smoke test utility does not fetch outside loopback or mutate data."""
+from app.version import APP_VERSION
 import json
 import urllib.request
 

@@ -1,5 +1,5 @@
-from app.version import APP_VERSION
 """Tests of realistic finance-domain behaviour and common invalid requests."""
+from app.version import APP_VERSION
 from datetime import date
 
 

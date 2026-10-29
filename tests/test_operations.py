@@ -1,5 +1,5 @@
-from app.version import APP_VERSION
 """Operations and backup regression tests; never touch a user's live database."""
+from app.version import APP_VERSION
 import logging
 import os
 import sqlite3

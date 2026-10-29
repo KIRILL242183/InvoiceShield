@@ -1,5 +1,5 @@
-from app.version import APP_VERSION
 """Security regression tests for server-side throttling and readiness."""
+from app.version import APP_VERSION
 from datetime import timedelta
 
 from fastapi.testclient import TestClient
