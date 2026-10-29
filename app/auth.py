@@ -28,7 +28,7 @@ PASSWORD_HASHER = PasswordHasher(time_cost=3, memory_cost=65536, parallelism=4)
 LOGIN_FAILURE_LIMIT = 5
 LOGIN_WINDOW_SECONDS = 15 * 60
 LOGIN_BLOCK_SECONDS = 15 * 60
-DUMMY_PASSWORD_HASH = "$argon2id$v=19$m=65536,t=3,p=4$nn0WNQ2dTYYG4YHj8YUW3w$PkqCKXUmIgkaEtY1UMneA7MTlxnjVGMZK8A0DApvgyU"  # verification work for unknown users
+DUMMY_PASSWORD_HASH = "$argon2id$v=19$m=65536,t=3,p=4$YLQfokgdGTUeBYuUWxdl9g$Q4573RbCr07nODfY6/A/+2z2T0OO2kv63k1HgbMaWYU"  # verification work for unknown users
 USERNAME_PATTERN = re.compile(r"[a-z][a-z0-9_.-]{2,31}\Z")
 
 
