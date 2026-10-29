@@ -1,7 +1,7 @@
 """Local educational authentication: Argon2id, revocable sessions and CSRF tokens.
 
 Session tokens are never stored in plaintext in the database. This does not
-replace HTTPS, login throttling, MFA or production security reviews.
+replace HTTPS, MFA or production security reviews.
 """
 from __future__ import annotations
 
@@ -20,11 +20,15 @@ from sqlalchemy.orm import Session
 
 from app.config import COOKIE_SECURE, SESSION_SECONDS
 from app.database import get_db
-from app.models import AuthSession, SecurityEvent, User
+from app.models import AuthSession, LoginThrottle, SecurityEvent, User
 
 SESSION_COOKIE = "__Host-invoiceshield" if COOKIE_SECURE else "invoiceshield_session"
 LOGIN_CSRF_COOKIE = "__Host-login_csrf" if COOKIE_SECURE else "invoiceshield_login_csrf"
 PASSWORD_HASHER = PasswordHasher(time_cost=3, memory_cost=65536, parallelism=4)
+LOGIN_FAILURE_LIMIT = 5
+LOGIN_WINDOW_SECONDS = 15 * 60
+LOGIN_BLOCK_SECONDS = 15 * 60
+DUMMY_PASSWORD_HASH = "$argon2id$v=19$m=65536,t=3,p=4$nn0WNQ2dTYYG4YHj8YUW3w$PkqCKXUmIgkaEtY1UMneA7MTlxnjVGMZK8A0DApvgyU"  # verification work for unknown users
 USERNAME_PATTERN = re.compile(r"[a-z][a-z0-9_.-]{2,31}\Z")
 
 
@@ -61,6 +65,47 @@ def create_user(db: Session, username: str, password: str, role: str) -> User:
     db.commit()
     db.refresh(user)
     return user
+
+
+def login_throttle_key(username: str, remote_addr: str) -> str:
+    """Pseudonymous per-account/per-address key."""
+    return hashlib.sha256(f"{username}\0{remote_addr}".encode("utf-8")).hexdigest()
+
+
+def lock_login_counter(db: Session, key: str) -> None:
+    """Serialize check/update even when the counter row does not exist."""
+    connection = db.connection()
+    dialect = connection.dialect.name
+    if dialect == "sqlite":
+        connection.exec_driver_sql("BEGIN IMMEDIATE")
+    elif dialect == "postgresql":
+        lock_id = int.from_bytes(bytes.fromhex(key[:16]), "big", signed=True)
+        connection.exec_driver_sql("SELECT pg_advisory_xact_lock(%s)", (lock_id,))
+
+
+def login_throttle_state(db: Session, username: str, remote_addr: str) -> tuple[LoginThrottle, int]:
+    """Call inside a DB transaction; commit or rollback to release the lock."""
+    key = login_throttle_key(username, remote_addr)
+    lock_login_counter(db, key)
+    row = db.get(LoginThrottle, key)
+    now = utc_now_naive()
+    if row is None:
+        row = LoginThrottle(key_hash=key, failures=0, window_started_at=now)
+        db.add(row)
+    elif (now - row.window_started_at).total_seconds() >= LOGIN_WINDOW_SECONDS:
+        row.failures = 0
+        row.window_started_at = now
+        row.blocked_until = None
+    remaining = max(0, int((row.blocked_until - now).total_seconds()) + 1) if row.blocked_until and row.blocked_until > now else 0
+    return row, remaining
+
+
+def record_failed_login(row: LoginThrottle) -> int:
+    row.failures += 1
+    if row.failures >= LOGIN_FAILURE_LIMIT:
+        row.blocked_until = utc_now_naive() + timedelta(seconds=LOGIN_BLOCK_SECONDS)
+        return LOGIN_BLOCK_SECONDS
+    return 0
 
 
 def new_session(db: Session, user: User) -> tuple[str, AuthSession]:
