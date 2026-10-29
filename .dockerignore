@@ -1,5 +1,7 @@
 .git
 .env
+.env.*
+!.env.example
 .venv
 __pycache__
 .pytest_cache
@@ -7,3 +9,12 @@ __pycache__
 tests
 docs
 *.db
+*.sqlite*
+*.bak
+*.key
+*.pem
+*backup*
+backups/
+*.zip
+*.bundle
+.DS_Store
