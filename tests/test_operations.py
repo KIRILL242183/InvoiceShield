@@ -1,4 +1,5 @@
 """Operations and backup regression tests; never touch a user's live database."""
+from app.version import APP_VERSION
 import logging
 import os
 import sqlite3
@@ -113,4 +114,4 @@ def test_readiness_still_protected_with_request_id(client):
         assert response.headers["X-Content-Type-Options"] == "nosniff"
         assert response.headers["Cache-Control"] == "no-store"
         assert response.headers["X-Request-ID"]
-        assert response.json()["version"] == "0.9.0"
+        assert response.json()["version"] == APP_VERSION

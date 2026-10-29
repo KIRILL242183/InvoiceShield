@@ -1,4 +1,5 @@
 """Tests of realistic finance-domain behaviour and common invalid requests."""
+from app.version import APP_VERSION
 from datetime import date
 
 
@@ -19,7 +20,7 @@ def invoice(client, supplier_id, number="INV-001", amount="150000.00", bank="RU-
 
 
 def test_health(client):
-    assert client.get("/health").json() == {"status": "ok", "version": "0.9.0"}
+    assert client.get("/health").json() == {"status": "ok", "version": APP_VERSION}
 
 
 def test_supplier_create_and_bank_normalization(client):
