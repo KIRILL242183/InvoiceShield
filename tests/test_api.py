@@ -19,7 +19,7 @@ def invoice(client, supplier_id, number="INV-001", amount="150000.00", bank="RU-
 
 
 def test_health(client):
-    assert client.get("/health").json() == {"status": "ok", "version": "0.5.0"}
+    assert client.get("/health").json() == {"status": "ok", "version": "0.6.0"}
 
 
 def test_supplier_create_and_bank_normalization(client):
