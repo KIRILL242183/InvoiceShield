@@ -113,4 +113,4 @@ def test_readiness_still_protected_with_request_id(client):
         assert response.headers["X-Content-Type-Options"] == "nosniff"
         assert response.headers["Cache-Control"] == "no-store"
         assert response.headers["X-Request-ID"]
-        assert response.json()["version"] == "0.8.0"
+        assert response.json()["version"] == "0.9.0"

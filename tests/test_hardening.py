@@ -95,10 +95,10 @@ def test_long_password_fails_before_argon2_and_no_login(client, monkeypatch):
 
 def test_readiness_and_browser_headers(client):
     ready = client.get("/ready")
-    assert ready.json() == {"status": "ready", "version": "0.8.0"}
+    assert ready.json() == {"status": "ready", "version": "0.9.0"}
     assert ready.headers["Permissions-Policy"] == "camera=(), microphone=(), geolocation=()"
     assert "Strict-Transport-Security" not in ready.headers
-    assert client.get("/health").json() == {"status": "ok", "version": "0.8.0"}
+    assert client.get("/health").json() == {"status": "ok", "version": "0.9.0"}
 
 
 def test_csrf_violations_not_counted_as_password_failures(client):

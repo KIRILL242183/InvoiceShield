@@ -26,7 +26,7 @@ def test_smoke_check_validates_headers_and_status(monkeypatch):
         def read(self, size):
             assert size == 2048
             status = "ready" if self.path.endswith("/ready") else "ok"
-            return json.dumps({"status": status, "version": "0.8.0"}).encode()
+            return json.dumps({"status": status, "version": "0.9.0"}).encode()
 
         def __enter__(self):
             return self
@@ -35,4 +35,4 @@ def test_smoke_check_validates_headers_and_status(monkeypatch):
             return None
 
     monkeypatch.setattr(urllib.request, "urlopen", lambda req, timeout: FakeResponse(req.full_url))
-    assert smoke_check("http://127.0.0.1:8000") == {"/health": "0.8.0", "/ready": "0.8.0"}
+    assert smoke_check("http://127.0.0.1:8000") == {"/health": "0.9.0", "/ready": "0.9.0"}
