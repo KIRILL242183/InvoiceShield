@@ -88,6 +88,16 @@ class SecurityEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
+class LoginThrottle(Base):
+    """Persistent failed-login counter. Hash is a pseudonymous username/address key."""
+    __tablename__ = "login_throttles"
+
+    key_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    failures: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    window_started_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), nullable=False)
+    blocked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=False), nullable=True)
+
+
 class Incident(Base):
     """A review case linked to exactly one suspicious invoice."""
     __tablename__ = "incidents"

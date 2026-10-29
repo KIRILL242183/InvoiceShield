@@ -46,3 +46,12 @@
 - Текущий `create_all` сохраняет старые таблицы, но **не выполняет ALTER TABLE**. До изменения существующих колонок нужна отдельная миграционная система (Alembic).
 
 Основа для требований: OWASP Session Management Cheat Sheet и OWASP CSRF Prevention Cheat Sheet.
+
+
+## v0.7: ограничение попыток входа
+
+- 5 неудачных попыток в течение 15 минут для пары логин/IP → 15-минутная блокировка (HTTP 429).
+- Таблица `login_throttles` хранит хеш пары и временные метки; SQLite BEGIN IMMEDIATE и PostgreSQL advisory-lock сериализуют создание счётчиков.
+- Не является защитой от распределённого брутфорса с нескольких IP.
+- Адрес `X-Forwarded-For` не принимается от произвольного клиента. Нужны настройки доверенного proxy.
+- `/ready` проверяет БД. Для production по-прежнему требуются HTTPS, MFA, rate limiting на gateway и security review.
