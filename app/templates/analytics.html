@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Аналитика рисков — InvoiceShield</title><link rel="stylesheet" href="/static/styles.css"></head>
+<body><div class="shell">
+  <aside class="sidebar">
+    <div class="brand"><span class="brand-icon">◆</span><div>Invoice<span>Shield</span><small>FRAUD PREVENTION</small></div></div>
+    <div class="nav-label">WORKSPACE</div>
+    <a class="nav" href="/">◫ &nbsp; Обзор</a>
+    <a class="nav active" href="/analytics">▥ &nbsp; Аналитика</a>
+    <a class="nav" href="/incidents">⌕ &nbsp; Расследования</a>
+    <a class="nav" href="/pdf-import">▤ &nbsp; Импорт PDF</a>
+    <div class="side-bottom"><span class="dot"></span> DEMO ENVIRONMENT<br><small>Локальная версия v0.6.0 · {{ username }}</small></div>
+  </aside>
+  <main>
+    <div class="topbar"><div><div class="eyebrow">ANALYTICS / FINANCIAL RISK</div><h1>Аналитика финансовых рисков</h1><p>Фильтры относятся к дате выставления счёта. Данные демонстрационные, не платёжные транзакции.</p></div>
+      <div class="top-actions"><span class="user-tag">{{ username }}</span><a class="button small outline" href="/">← Обзор</a><form method="post" action="/logout"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="button small outline" type="submit">Выйти</button></form></div>
+    </div>
+    <section class="panel analytics-filter-panel">
+      <div class="panel-title"><div><div class="eyebrow">FILTERS</div><h2>Параметры отчёта</h2></div></div>
+      <form method="get" action="/analytics" class="analytics-filters">
+        <label>Дата с<input type="date" name="from_date" value="{{ filters.from_date.isoformat() if filters.from_date else '' }}"></label>
+        <label>Дата по<input type="date" name="to_date" value="{{ filters.to_date.isoformat() if filters.to_date else '' }}"></label>
+        <label>Поставщик<select name="supplier_id"><option value="">Все поставщики</option>{% for supplier in suppliers %}<option value="{{ supplier.id }}" {% if filters.supplier_id == supplier.id %}selected{% endif %}>{{ supplier.name }}</option>{% endfor %}</select></label>
+        <label>Риск<select name="risk_level"><option value="">Все уровни</option>{% for risk in ['LOW','MEDIUM','HIGH'] %}<option value="{{ risk }}" {% if filters.risk_level == risk %}selected{% endif %}>{{ {'LOW':'Низкий','MEDIUM':'Средний','HIGH':'Высокий'}[risk] }}</option>{% endfor %}</select></label>
+        <button type="submit" class="button small">Применить</button><a class="button small outline" href="/analytics">Сбросить</a>
+      </form>
+    </section>
+    <section class="stats">
+      <div class="metric"><div class="metric-label">ПРОВЕРЕНО СЧЕТОВ</div><div class="metric-number">{{ report.total }}</div><div class="metric-bottom">По выбранным фильтрам</div></div>
+      <div class="metric"><div class="metric-label">СУММА СЧЕТОВ</div><div class="metric-number analytics-money">{{ total_rub }}</div><div class="metric-bottom">₽ · не сумма платежей</div></div>
+      <div class="metric"><div class="metric-label">СРЕДНИЙ + ВЫСОКИЙ РИСК</div><div class="metric-number risk-red">{{ report.levels.MEDIUM + report.levels.HIGH }}</div><div class="metric-bottom">Потенциально требуют проверки</div></div>
+      <div class="metric"><div class="metric-label">СУММА РИСКОВЫХ СЧЕТОВ</div><div class="metric-number analytics-money">{{ risky_rub }}</div><div class="metric-bottom">₽ · сумма номиналов, не убытки</div></div>
+    </section>
+    <section class="analytics-columns">
+      <div class="panel"><div class="panel-title"><div><div class="eyebrow">DISTRIBUTION</div><h2>Распределение рисков</h2></div></div>
+        {% for level, name in [('LOW','Низкий'),('MEDIUM','Средний'),('HIGH','Высокий')] %}
+        <div class="analytics-progress"><div><strong>{{ name }}</strong><span>{{ report.levels[level] }} шт.</span></div><progress class="progress-{{ level|lower }}" max="{{ report.total or 1 }}" value="{{ report.levels[level] }}">{{ report.levels[level] }}</progress></div>
+        {% endfor %}
+      </div>
+      <div class="panel"><div class="panel-title"><div><div class="eyebrow">INVESTIGATIONS</div><h2>Статусы расследований</h2></div></div>
+        <div class="analytics-statuses">{% for status, label in [('OPEN','Новые'),('IN_REVIEW','На проверке'),('RESOLVED','Рассмотрены'),('FALSE_POSITIVE','Ложные сигналы')] %}<div class="analytics-status"><span>{{ label }}</span><strong>{{ report.statuses[status] }}</strong></div>{% endfor %}</div>
+        <p class="analytics-note">Статусы относятся к инцидентам счетов, попавших под фильтр. Это не показатель предотвращённых убытков.</p>
+      </div>
+    </section>
+    <section class="panel table-panel"><div class="panel-title"><div><div class="eyebrow">SUPPLIERS</div><h2>Риски по поставщикам</h2></div>{% if is_admin %}<a class="button small outline" href="/api/analytics/export.csv?{{ request.url.query|e }}">Экспорт CSV ↓</a>{% endif %}</div>
+      <div class="table-wrap"><table><thead><tr><th>ПОСТАВЩИК</th><th>СЧЕТОВ</th><th>ВЫСОКИЙ РИСК</th><th>ОБЩАЯ СУММА, ₽</th></tr></thead><tbody>
+      {% for supplier in report.suppliers %}<tr><td><strong>{{ supplier.name }}</strong></td><td>{{ supplier.count }}</td><td><span class="risk-pill high">{{ supplier.high }}</span></td><td>{{ supplier.amount_rub }}</td></tr>
+      {% else %}<tr><td colspan="4" class="empty">Нет счетов для выбранных фильтров.</td></tr>{% endfor %}
+      </tbody></table></div>
+      <p class="analytics-note">Экспорт доступен только администратору, содержит до 5 000 записей и исключает банковские реквизиты. Данные для этого отчёта не сохраняются отдельно.</p>
+    </section>
+    <footer>InvoiceShield v0.6.0 · Учебная демонстрация · Только синтетические данные · <a href="/docs">Swagger / API</a></footer>
+  </main>
+</div></body></html>
