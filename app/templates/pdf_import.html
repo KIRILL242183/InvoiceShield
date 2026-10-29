@@ -1,12 +1,13 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>InvoiceShield | Импорт PDF</title><link rel="stylesheet" href="/static/styles.css"></head>
-<body><div class="shell"><aside class="sidebar"><div class="brand">◆ InvoiceShield</div><div class="nav-label">WORKSPACE</div><a class="nav" href="/">← Обзор</a><a class="nav active" href="/pdf-import">▤ Импорт PDF</a><a class="nav" href="/incidents">Расследования</a><div class="side-bottom">Локальная демонстрация v0.5.0</div></aside>
-<main><div class="topbar"><div><div class="eyebrow">DOCUMENT PROCESSING</div><h1>Импорт PDF-счёта</h1><p>Только текстовые PDF до 2 МиБ и 5 страниц. Документ не сохраняется на сервере.</p></div></div>
+<body><a class="skip-link" href="#main-content">Перейти к содержимому</a>
+<div class="shell">{% include "_sidebar.html" %}
+<main id="main-content"><div class="topbar"><div><div class="eyebrow">DOCUMENT PROCESSING</div><h1>Импорт PDF-счёта</h1><p>Только текстовые PDF до 2 МиБ и 5 страниц. Документ не сохраняется на сервере.</p></div></div>
 <section class="panel"><div class="panel-title"><h2>1. Проверить документ</h2></div>
 <form action="/pdf-import" method="post" enctype="multipart/form-data" class="form-grid"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><label class="full">PDF-файл<input type="file" name="file" accept="application/pdf,.pdf" required></label><button class="button full" type="submit">Извлечь данные →</button></form>
 {% if error %}<div class="alert error" role="alert">{{ error }}</div>{% endif %}</section>
-{% if draft %}<section class="panel"><div class="panel-title"><h2>2. Проверьте и подтвердите поля</h2></div><div class="alert error" role="status">{% for warning in draft.warnings %}{{ warning }}{% if not loop.last %} · {% endif %}{% endfor %}</div>
+{% if draft %}<section class="panel"><div class="panel-title"><h2>2. Проверьте и подтвердите поля</h2></div>{% if draft.warnings %}<div class="alert error" role="status">{% for warning in draft.warnings %}{{ warning }}{% if not loop.last %} · {% endif %}{% endfor %}</div>{% endif %}
 <div class="form-grid" aria-label="Извлечённые поля">
 <div><strong>Номер счёта:</strong> {{ draft.invoice_number or 'не распознано' }}</div>
 <div><strong>Сумма:</strong> {{ draft.amount_rub or 'не распознано' }}</div>

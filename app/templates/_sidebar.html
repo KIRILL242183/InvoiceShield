@@ -1,0 +1,13 @@
+<aside class="sidebar" aria-label="Навигация по InvoiceShield">
+  <a class="brand" href="/" aria-label="InvoiceShield — на главную"><span class="brand-icon" aria-hidden="true">◆</span><span>Invoice<span>Shield</span><small>FRAUD PREVENTION</small></span></a>
+  <div class="nav-label">РАБОЧЕЕ ПРОСТРАНСТВО</div>
+  <nav class="nav-links" aria-label="Основные разделы">
+    <a class="nav{{ ' active' if request.url.path == '/' else '' }}" href="/" {% if request.url.path == '/' %}aria-current="page"{% endif %}>Обзор</a>
+    <a class="nav{{ ' active' if request.url.path == '/analytics' else '' }}" href="/analytics" {% if request.url.path == '/analytics' %}aria-current="page"{% endif %}>Аналитика</a>
+    <a class="nav{{ ' active' if request.url.path.startswith('/incidents') else '' }}" href="/incidents" {% if request.url.path.startswith('/incidents') %}aria-current="page"{% endif %}>Расследования</a>
+    <a class="nav{{ ' active' if request.url.path == '/pdf-import' else '' }}" href="/pdf-import" {% if request.url.path == '/pdf-import' %}aria-current="page"{% endif %}>Импорт PDF</a>
+    <a class="nav" href="/#invoice-form">Проверить счёт</a>
+    <a class="nav" href="/#suppliers">Поставщики</a>
+  </nav>
+  <div class="side-bottom"><span class="dot" aria-hidden="true">●</span> УЧЕБНАЯ СРЕДА<br><small>v{{ app_version }} · {{ username }}</small></div>
+</aside>

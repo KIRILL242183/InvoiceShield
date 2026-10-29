@@ -7,25 +7,15 @@
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
+<a class="skip-link" href="#main-content">Перейти к содержимому</a>
 <div class="shell">
-  <aside class="sidebar">
-    <div class="brand"><span class="brand-icon">◆</span><div>Invoice<span>Shield</span><small>FRAUD PREVENTION</small></div></div>
-    <div class="nav-label">WORKSPACE</div>
-    <a class="nav active" href="#overview">◫ &nbsp; Обзор</a>
-    <a class="nav" href="/analytics">▥ &nbsp; Аналитика</a>
-    <a class="nav" href="/incidents">⌕ &nbsp; Расследования</a>
-    <a class="nav" href="/pdf-import">▤ &nbsp; Импорт PDF</a>
-    <a class="nav" href="#invoice-form">▤ &nbsp; Проверить счёт</a>
-    <a class="nav" href="#suppliers">▦ &nbsp; Поставщики</a>
-    {% if is_admin %}<a class="nav" href="#history">◷ &nbsp; История событий</a>{% endif %}
-    <div class="side-bottom"><span class="dot"></span> DEMO ENVIRONMENT<br><small>Локальная версия v0.7.0 · {{ username }}</small></div>
-  </aside>
-  <main id="overview">
+  {% include "_sidebar.html" %}
+  <main id="main-content">
     <div class="topbar"><div><div class="eyebrow">ANALYTICS / OVERVIEW</div><h1>Контроль финансовых рисков</h1><p>Проверяйте счета поставщиков и расследуйте сигналы риска.</p></div><div class="top-actions"><span class="user-tag">{{ username }} · {{ 'Администратор' if is_admin else 'Аналитик' }}</span><a class="button small" href="#invoice-form">+ Новый счёт</a><form method="post" action="/logout"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="button small outline" type="submit">Выйти</button></form></div></div>
     {% if notice %}<div class="alert {{ 'error' if notice_is_error else 'success' }}" role="status">{{ notice }}</div>{% endif %}
     <section class="stats">
       <div class="metric"><div class="metric-label">ПОСТАВЩИКОВ <span>↗</span></div><div class="metric-number">{{ stats.suppliers }}</div><div class="metric-bottom">Зарегистрировано</div></div>
-      <div class="metric"><div class="metric-label">ПРОВЕРЕНО СЧЕТОВ <span>◎</span></div><div class="metric-number">{{ stats.invoices }}</div><div class="metric-bottom">Последние 100 записей</div></div>
+      <div class="metric"><div class="metric-label">ПРОВЕРЕНО СЧЕТОВ <span>◎</span></div><div class="metric-number">{{ stats.invoices }}</div><div class="metric-bottom">На главной показываются последние 100</div></div>
       <div class="metric"><div class="metric-label">ВЫСОКИЙ РИСК <span class="risk-red">●</span></div><div class="metric-number risk-red">{{ stats.high }}</div><div class="metric-bottom">Требуют проверки</div></div>
       <div class="metric"><div class="metric-label">СРЕДНИЙ РИСК <span class="risk-yellow">●</span></div><div class="metric-number risk-yellow">{{ stats.medium }}</div><div class="metric-bottom">Рекомендуется проверка</div></div>
     </section>
@@ -52,17 +42,17 @@
       </div>
     </section>
     <section class="panel table-panel"><div class="panel-title"><div><div class="eyebrow">INVESTIGATIONS</div><h2>Новые инциденты</h2></div><a class="button small outline" href="/incidents">Все инциденты →</a></div>
-      <div class="table-wrap"><table><thead><tr><th>ИНЦИДЕНТ</th><th>СЧЁТ</th><th>РИСК</th><th>СТАТУС</th><th>ОТВЕТСТВЕННЫЙ</th></tr></thead><tbody>
+      <div class="table-wrap"><table><thead><tr><th scope="col">ИНЦИДЕНТ</th><th scope="col">СЧЁТ</th><th scope="col">РИСК</th><th scope="col">СТАТУС</th><th scope="col">ОТВЕТСТВЕННЫЙ</th></tr></thead><tbody>
       {% for case in incidents %}<tr><td><a class="incident-link" href="/incidents/{{ case.id }}">INC-{{ case.id }} →</a></td><td>{{ case.invoice.invoice_number }}</td><td><span class="risk-pill {{ case.invoice.risk_level|lower }}">{{ case.invoice.risk_score }} баллов</span></td><td>{{ case.status }}</td><td>{{ case.assignee.username if case.assignee else 'Не назначен' }}</td></tr>
       {% else %}<tr><td colspan="5" class="empty">Открытых расследований пока нет. Они появляются при среднем или высоком риске.</td></tr>{% endfor %}
       </tbody></table></div></section>
     <section class="panel table-panel"><div class="panel-title"><div><div class="eyebrow">MONITORING</div><h2>Последние проверки</h2></div><span class="label-tag">Последние 100</span></div>
-      <div class="table-wrap"><table><thead><tr><th>СЧЁТ</th><th>ПОСТАВЩИК</th><th>СУММА</th><th>РИСК</th><th>СИГНАЛЫ</th></tr></thead><tbody>
+      <div class="table-wrap"><table><thead><tr><th scope="col">СЧЁТ</th><th scope="col">ПОСТАВЩИК</th><th scope="col">СУММА</th><th scope="col">РИСК</th><th scope="col">СИГНАЛЫ</th></tr></thead><tbody>
       {% for invoice in invoices %}<tr><td><strong>{{ invoice.invoice_number }}</strong><small>{{ invoice.issued_on }}</small></td><td>{{ invoice.supplier.name }}</td><td>{{ '%.2f'|format(invoice.amount_rub) }} ₽</td><td><span class="risk-pill {{ invoice.risk_level|lower }}">{{ {'LOW':'Низкий','MEDIUM':'Средний','HIGH':'Высокий'}[invoice.risk_level] }} · {{ invoice.risk_score }}</span></td><td>{% if invoice.findings %}{% for finding in invoice.findings %}<div class="finding" title="{{ finding.message }}">{{ finding.message }}</div>{% endfor %}{% else %}<span class="muted">Не выявлено</span>{% endif %}</td></tr>
       {% else %}<tr><td colspan="5" class="empty">Счета ещё не зарегистрированы. Добавьте первый счёт выше.</td></tr>{% endfor %}</tbody></table></div>
     </section>
     {% if is_admin %}<section class="panel table-panel" id="history"><div class="panel-title"><div><div class="eyebrow">AUDIT TRAIL</div><h2>История действий</h2></div></div><div class="events">{% for event in audit %}<div class="event"><span class="event-icon">✓</span><div><strong>{{ event.details }}</strong><small>{{ event.action }} · {{ event.entity_type }} #{{ event.entity_id }}</small></div><time>{{ event.created_at.strftime('%d.%m.%Y %H:%M') }}</time></div>{% else %}<div class="empty">Событий пока нет.</div>{% endfor %}</div></section>{% endif %}
-    <footer>InvoiceShield v0.7.0 · Учебная демонстрация · Не используйте реальные платёжные данные · <a href="/docs">API / Swagger</a></footer>
+    <footer>InvoiceShield v{{ app_version }} · Учебная демонстрация · Не используйте реальные платёжные данные · <a href="/docs">API / Swagger</a></footer>
   </main>
 </div>
 <script src="/static/app.js" defer></script>

@@ -1,16 +1,9 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Аналитика рисков — InvoiceShield</title><link rel="stylesheet" href="/static/styles.css"></head>
-<body><div class="shell">
-  <aside class="sidebar">
-    <div class="brand"><span class="brand-icon">◆</span><div>Invoice<span>Shield</span><small>FRAUD PREVENTION</small></div></div>
-    <div class="nav-label">WORKSPACE</div>
-    <a class="nav" href="/">◫ &nbsp; Обзор</a>
-    <a class="nav active" href="/analytics">▥ &nbsp; Аналитика</a>
-    <a class="nav" href="/incidents">⌕ &nbsp; Расследования</a>
-    <a class="nav" href="/pdf-import">▤ &nbsp; Импорт PDF</a>
-    <div class="side-bottom"><span class="dot"></span> DEMO ENVIRONMENT<br><small>Локальная версия v0.7.0 · {{ username }}</small></div>
-  </aside>
-  <main>
+<body><a class="skip-link" href="#main-content">Перейти к содержимому</a>
+<div class="shell">
+  {% include "_sidebar.html" %}
+  <main id="main-content">
     <div class="topbar"><div><div class="eyebrow">ANALYTICS / FINANCIAL RISK</div><h1>Аналитика финансовых рисков</h1><p>Фильтры относятся к дате выставления счёта. Данные демонстрационные, не платёжные транзакции.</p></div>
       <div class="top-actions"><span class="user-tag">{{ username }}</span><a class="button small outline" href="/">← Обзор</a><form method="post" action="/logout"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="button small outline" type="submit">Выйти</button></form></div>
     </div>
@@ -42,12 +35,12 @@
       </div>
     </section>
     <section class="panel table-panel"><div class="panel-title"><div><div class="eyebrow">SUPPLIERS</div><h2>Риски по поставщикам</h2></div>{% if is_admin %}<a class="button small outline" href="/api/analytics/export.csv?{{ request.url.query|e }}">Экспорт CSV ↓</a>{% endif %}</div>
-      <div class="table-wrap"><table><thead><tr><th>ПОСТАВЩИК</th><th>СЧЕТОВ</th><th>ВЫСОКИЙ РИСК</th><th>ОБЩАЯ СУММА, ₽</th></tr></thead><tbody>
+      <div class="table-wrap"><table><thead><tr><th scope="col">ПОСТАВЩИК</th><th scope="col">СЧЕТОВ</th><th scope="col">ВЫСОКИЙ РИСК</th><th scope="col">ОБЩАЯ СУММА, ₽</th></tr></thead><tbody>
       {% for supplier in report.suppliers %}<tr><td><strong>{{ supplier.name }}</strong></td><td>{{ supplier.count }}</td><td><span class="risk-pill high">{{ supplier.high }}</span></td><td>{{ supplier.amount_rub }}</td></tr>
       {% else %}<tr><td colspan="4" class="empty">Нет счетов для выбранных фильтров.</td></tr>{% endfor %}
       </tbody></table></div>
       <p class="analytics-note">Экспорт доступен только администратору, содержит до 5 000 записей и исключает банковские реквизиты. Данные для этого отчёта не сохраняются отдельно.</p>
     </section>
-    <footer>InvoiceShield v0.7.0 · Учебная демонстрация · Только синтетические данные · <a href="/docs">Swagger / API</a></footer>
+    <footer>InvoiceShield v{{ app_version }} · Учебная демонстрация · Только синтетические данные · <a href="/docs">Swagger / API</a></footer>
   </main>
 </div></body></html>

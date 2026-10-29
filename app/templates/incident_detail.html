@@ -1,8 +1,9 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Инцидент INC-{{ case.id }} — InvoiceShield</title><link rel="stylesheet" href="/static/styles.css"></head>
-<body><div class="shell">
-<aside class="sidebar"><div class="brand"><span class="brand-icon">◆</span><div>Invoice<span>Shield</span><small>FRAUD PREVENTION</small></div></div><div class="nav-label">WORKSPACE</div><a class="nav" href="/">◫ &nbsp; Обзор</a><a class="nav active" href="/incidents">⌕ &nbsp; Расследования</a><div class="side-bottom"><span class="dot"></span> DEMO ENVIRONMENT<br><small>v0.3.0 · {{ username }}</small></div></aside>
-<main>
+<body><a class="skip-link" href="#main-content">Перейти к содержимому</a>
+<div class="shell">
+{% include "_sidebar.html" %}
+<main id="main-content">
 <div class="topbar"><div><div class="eyebrow"><a href="/incidents">РАССЛЕДОВАНИЯ</a> / INC-{{ case.id }}</div><h1>Инцидент INC-{{ case.id }}</h1><p>Счёт {{ case.invoice.invoice_number }} · {{ case.invoice.supplier.name }}</p></div><div class="top-actions"><a href="/incidents" class="button small outline">← К списку</a><form method="post" action="/logout"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="button small outline">Выйти</button></form></div></div>
 {% if notice %}<div class="alert success" role="status">{{ notice }}</div>{% endif %}
 <section class="case-summary">
@@ -18,4 +19,4 @@
 {% if is_admin %}<form method="post" action="/web/incidents/{{ case.id }}/assign" class="case-form"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="version" value="{{ case.version }}"><label>Назначить исполнителя<select name="assignee_id"><option value="">Не назначен</option>{% for u in users %}<option value="{{ u.id }}" {% if case.assignee_id == u.id %}selected{% endif %}>{{ u.username }} ({{ u.role }})</option>{% endfor %}</select></label><button class="button outline">Сохранить назначение</button></form>{% endif %}
 </section></div>
 <div class="case-column"><section class="panel"><div class="panel-title"><div><div class="eyebrow">AUDITABLE TIMELINE</div><h2>История расследования</h2></div></div><div class="timeline">{% for e in events %}<div class="timeline-entry"><div class="timeline-meta"><strong>{{ e.actor.username if e.actor else 'Система' }}</strong> · {{ e.created_at.strftime('%d.%m.%Y %H:%M') }}</div><div class="timeline-type">{{ e.details }}</div>{% if e.comment %}<div class="timeline-comment">{{ e.comment }}</div>{% endif %}</div>{% else %}<p class="muted">Событий нет</p>{% endfor %}</div><form method="post" action="/web/incidents/{{ case.id }}/comments" class="case-form"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><label>Комментарий<textarea name="comment" required maxlength="1000" rows="4" placeholder="Укажите результаты проверки и источник подтверждения (без конфиденциальных данных)"></textarea><small>До 1000 символов. Комментарии сохраняются в истории.</small></label><button class="button">Добавить комментарий →</button></form></section></div>
-</div><footer>InvoiceShield v0.3.0 · Учебный проект · Не использовать реальные финансовые данные</footer></main></div></body></html>
+</div><footer>InvoiceShield v{{ app_version }} · Учебный проект · Не использовать реальные финансовые данные</footer></main></div></body></html>

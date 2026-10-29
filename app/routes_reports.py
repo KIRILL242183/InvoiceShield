@@ -3,7 +3,6 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -13,8 +12,10 @@ from app.models import Supplier
 from app.services.analytics import (LEVELS, ReportFilter, ReportTooLarge,
                                     collect_report, report_csv, rubles)
 
+from app.ui import make_templates
+
 router = APIRouter(tags=["Analytics"])
-templates = Jinja2Templates(directory="app/templates")
+templates = make_templates()
 
 
 def _filters(from_date: date | None, to_date: date | None,
