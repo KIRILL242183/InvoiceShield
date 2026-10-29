@@ -9,8 +9,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth import (
-    LOGIN_CSRF_COOKIE, check_password, clear_session_cookie,
-    lookup_identity, new_session, require_api_user, require_web_user,
+    DUMMY_PASSWORD_HASH, LOGIN_CSRF_COOKIE, check_password, clear_session_cookie,
+    login_throttle_state, lookup_identity, new_session, record_failed_login,
+    require_api_user, require_web_user,
     revoke_session, set_session_cookie, verify_csrf,
 )
 from app.config import COOKIE_SECURE
@@ -21,10 +22,11 @@ router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 
-def login_page(request: Request, error: str = "") -> HTMLResponse:
+def login_page(request: Request, error: str = "", *, status_code: int = 200) -> HTMLResponse:
     csrf_token = secrets.token_urlsafe(32)
     response = templates.TemplateResponse(
-        request=request, name="login.html", context={"csrf_token": csrf_token, "error": error}
+        request=request, name="login.html", context={"csrf_token": csrf_token, "error": error},
+        status_code=status_code,
     )
     response.set_cookie(
         LOGIN_CSRF_COOKIE, csrf_token, httponly=True, secure=COOKIE_SECURE,
@@ -51,12 +53,28 @@ def post_login(
         from fastapi import HTTPException
         raise HTTPException(status_code=403, detail="Неверный CSRF-токен")
     username = username.strip().lower()
+    if len(username) > 32 or len(password) > 1024:
+        return login_page(request, "Неверный логин или пароль")
+    remote_addr = request.client.host if request.client else "unknown"
+    counter, wait_seconds = login_throttle_state(db, username, remote_addr)
+    if wait_seconds:
+        db.commit()
+        response = login_page(request, "Слишком много попыток. Попробуйте позже.", status_code=429)
+        response.headers["Retry-After"] = str(wait_seconds)
+        return response
     user = db.scalar(select(User).where(User.username == username)) if username else None
-    if user is None or not user.is_active or not check_password(password, user.password_hash):
+    password_ok = check_password(password, user.password_hash if user and user.is_active else DUMMY_PASSWORD_HASH)
+    if user is None or not user.is_active or not password_ok:
         db.add(SecurityEvent(user_id=user.id if user else None,
                              event="LOGIN_FAILURE", detail="Неверные учётные данные"))
+        blocked_for = record_failed_login(counter)
         db.commit()
+        if blocked_for:
+            response = login_page(request, "Слишком много попыток. Попробуйте позже.", status_code=429)
+            response.headers["Retry-After"] = str(blocked_for)
+            return response
         return login_page(request, "Неверный логин или пароль")
+    db.delete(counter)
     token, _ = new_session(db, user)
     response = RedirectResponse(url="/", status_code=303)
     set_session_cookie(response, token)
