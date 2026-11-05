@@ -186,3 +186,14 @@ docker compose up --build -d --wait
 ```
 
 Для локальной Docker-версии нужно отдельно создать администратора через `docker compose run --rm web python -m scripts.manage_users add --username admin --role admin`. Команда backup для SQLite к PostgreSQL не применяется, см. `pg_dump` в операционной инструкции.
+
+## Связанные проекты
+
+- [invoiceshield-infra](https://github.com/KIRILL242183/invoiceshield-infra): запуск InvoiceShield за nginx с HTTPS,
+  ежедневные резервные копии PostgreSQL с проверкой восстановления, мониторинг на Prometheus и Grafana.
+- [logsentinel](https://github.com/KIRILL242183/logsentinel): разбор логов nginx и sshd, находит подбор пароля
+  на `/login`, сканирование и попытки инъекций.
+
+За обратным прокси приложение нужно запускать с `--proxy-headers` и списком доверенных адресов прокси
+(`--forwarded-allow-ips`). Иначе ограничение попыток входа будет считать всех пользователей одним адресом прокси.
+Как это сделано, показано в `invoiceshield-infra/compose.yaml`.
